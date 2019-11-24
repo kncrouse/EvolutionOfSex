@@ -36,10 +36,10 @@ end
 
 to setup-parasite-size-types
   set parasite-size-types []
-  foreach allele-size-types [
-    let i ?
-    foreach allele-size-types [
-      let j ?
+  foreach allele-size-types [ ?1 ->
+    let i ?1
+    foreach allele-size-types [ ??1 ->
+      let j ??1
       set parasite-size-types lput ( ( i + j ) / 2 ) parasite-size-types
     ]
   ]
@@ -284,8 +284,8 @@ end
 GRAPHICS-WINDOW
 237
 48
-703
-535
+701
+513
 -1
 -1
 11.122
@@ -391,7 +391,7 @@ offspring-per-female
 offspring-per-female
 0
 10
-3
+3.0
 1
 1
 NIL
@@ -452,7 +452,7 @@ interbirth-interval
 interbirth-interval
 0
 100
-100
+100.0
 1
 1
 ticks
@@ -464,7 +464,7 @@ INPUTBOX
 226
 124
 carrying-capacity
-100
+100.0
 1
 0
 Number
@@ -478,7 +478,7 @@ parasite-lifespan
 parasite-lifespan
 0
 100
-30
+30.0
 1
 1
 ticks
@@ -508,7 +508,7 @@ offspring-per-parasite
 offspring-per-parasite
 1
 200
-10
+10.0
 1
 1
 NIL
@@ -692,13 +692,13 @@ The purpose of this model is to demonstrate that under certain conditions sexual
 
 Finally, make sure to pay special attention to the graphical outputs. How do the host phenotype frequencies and parasite infection strategies affect each other? What patterns do you notice?
 
+## ACKNOWLEDGEMENTS
+
+Thank you to M L Wilson for comments and suggestions.
+
 ## COPYRIGHT AND LICENSE
 
-Copyright 2016 K N Crouse.
-
-Acknowledgements: A special thanks to M L Wilson for comments and suggestions.
-
-This model was created at the University of Minnesota as part of a series of applets to illustrate principles in biological evolution.
+© 2016 K N Crouse.
 
 The model may be freely used, modified and redistributed provided this copyright is included and the resulting models are not used for profit.
 
@@ -1174,9 +1174,8 @@ Circle -7500403 true true 43 120 122
 Polygon -7500403 true true 45 165 60 135 90 105 117 80 133 61 142 47 150 30 154 150
 Polygon -7500403 true true 135 210 135 253 121 273 105 284 195 284 180 273 165 253 165 210
 Circle -13791810 true false 83 98 134
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -1293,7 +1292,7 @@ BUTTON
 522
 13
 649
-62
+46
 reproduce now
 NIL
 NIL
@@ -1464,7 +1463,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@
