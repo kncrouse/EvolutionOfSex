@@ -5,14 +5,16 @@
 globals [
   allele-color-types
   allele-size-types
+  parasite-proportion
   parasite-size-types
-  group-radius]
+  group-radius
+]
 
 breed [ hosts host ]
 breed [ parasites parasite ]
 
-hosts-own [ allele11 allele12 allele21 allele22 sex infecting-parasite gestation ]
-parasites-own [ age host-host ]
+hosts-own [ allele11 allele12 allele21 allele22 sex my-parasite gestation ]
+parasites-own [ age my-host ]
 
 ;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ;:::::: Setup ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -30,27 +32,25 @@ end
 to setup-vars
   set allele-size-types [ 1 3 ]
   set allele-color-types [ orange blue ]
+  set parasite-proportion 3
   setup-parasite-size-types
   set group-radius 20
 end
 
 to setup-parasite-size-types
   set parasite-size-types []
-  foreach allele-size-types [
-    let i ?
-    foreach allele-size-types [
-      let j ?
-      set parasite-size-types lput ( ( i + j ) / 2 ) parasite-size-types
+  foreach allele-size-types [ [?1] ->
+    let i ?1
+    foreach allele-size-types [ [??1] ->
+      let j ??1
+      set parasite-size-types lput ( ( i + j ) / parasite-proportion ) parasite-size-types
     ]
   ]
   set parasite-size-types remove-duplicates parasite-size-types
 end
 
 to setup-parasites
-  create-parasites carrying-capacity
-  [
-    initialize-parasite
-  ]
+  create-parasites carrying-capacity [ initialize-parasite ]
 end
 
 to initialize-parasite
@@ -62,7 +62,7 @@ to initialize-parasite
   set ycor random-ycor
   set color ((one-of allele-color-types) - 2)
   set size (one-of parasite-size-types) / 3
-  set host-host nobody
+  set my-host nobody
 end
 
 to setup-hosts
@@ -71,7 +71,7 @@ to setup-hosts
     set hidden? false
     set label ""
     set gestation random interbirth-interval
-    set infecting-parasite nobody
+    set my-parasite nobody
     set xcor random-xcor
     set ycor random-ycor
     set sex initialize-sex
@@ -127,6 +127,7 @@ end
 ;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 to go
+  ;if count parasites < 1 or count hosts < 1 [ stop ]
   update-visibility-settings
   ask parasites [ parasite-wander ]
   ask parasites [ parasite-update-age ]
@@ -137,14 +138,13 @@ to go
 end
 
 to update-visibility-settings
-  ask hosts [ set hidden? false ]
   ask parasites [ set hidden? (not show-parasites) ]
 end
 
 to parasite-update-age
   set age age + 1
   if age > parasite-lifespan [
-    if host-host != nobody [ parasites-reproduce ]
+    if my-host != nobody [ parasites-reproduce ]
     die
   ]
 end
@@ -169,7 +169,7 @@ to execute-reproduce
 end
 
 to reproduce
-  if [infecting-parasite] of self = nobody [
+  if [my-parasite] of self = nobody [
     if [sex] of self = "asexual" [ ask self [ hosts-reproduce-asexually ]]
     if [sex] of self = "female" [ ask self [ hosts-reproduce-sexually ]]
   ]
@@ -183,7 +183,7 @@ to hosts-wander
   right random 90
   left random 90
   fd .3
-  if infecting-parasite != nobody [ ask infecting-parasite [ move-to [patch-here] of myself ] ]
+  if my-parasite != nobody [ ask my-parasite [ move-to [patch-here] of myself ] ]
 end
 
 to parasite-wander
@@ -196,10 +196,10 @@ end
 to attempt-infection
   ask hosts-on patch-here [
     let matching? (color = ([color] of myself + 2)) and (size = ([size] of myself * 3))
-    if matching? and infecting-parasite = nobody [
+    if matching? and my-parasite = nobody [
       if random-float 1.0 < parasite-infectivity [
-        set infecting-parasite myself
-        ask infecting-parasite [ set host-host myself ]
+        set my-parasite myself
+        ask my-parasite [ set my-host myself ]
       ]
     ]
   ]
@@ -209,14 +209,14 @@ to parasites-reproduce
   hatch-parasites offspring-per-parasite
   [
     set age 0
-    set host-host nobody
+    set my-host nobody
     if random-float 1.0 < parasite-mutation-rate [
       initialize-parasite
       set xcor [xcor] of self
       set ycor [ycor] of self
     ]
   ]
-  ask host-host [ remove-host ]
+  ask my-host [ remove-host ]
 end
 
 to hosts-reproduce-asexually
@@ -256,7 +256,8 @@ to hosts-reproduce-sexually
       set allele22 one-of a22List
 
       set sex coin-flip-sex
-      set gestation (random (interbirth-interval / 10))
+      set my-parasite nobody
+      set gestation 0 ;(random (interbirth-interval / 10))
       hosts-update-for-mutation
       set-size-shape-color
     ]
@@ -277,15 +278,15 @@ to hosts-update-for-mutation
 end
 
 to remove-host
-  if infecting-parasite != nobody [ ask infecting-parasite [ die ] ]
+  if my-parasite != nobody [ ask my-parasite [ die ] ]
   die
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
 237
 48
-703
-535
+701
+513
 -1
 -1
 11.122
@@ -326,9 +327,9 @@ NIL
 1
 
 BUTTON
-388
+387
 10
-465
+464
 43
 NIL
 setup
@@ -343,66 +344,66 @@ NIL
 1
 
 TEXTBOX
-18
-291
-244
-309
+17
+268
+243
+286
 ------------ Parasites -------------
 11
 0.0
 1
 
 SLIDER
-15
-249
+14
 226
-282
+225
+259
 host-mutation-rate
 host-mutation-rate
 0
 1.0
-0.02
+0.0
 .01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-16
-130
-227
-163
+14
+107
+225
+140
 sexual-to-asexual-ratio
 sexual-to-asexual-ratio
 0
 1.0
-0.5
+0.9
 .01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-15
-210
-227
-243
+13
+187
+225
+220
 offspring-per-female
 offspring-per-female
 0
 10
-3
+10.0
 1
 1
 NIL
 HORIZONTAL
 
 PLOT
-1038
+1062
 273
-1359
+1387
 521
-Sexual Phenotype Frequencies
+Sexual Host Phenotype Frequencies
 time
 number of individuals
 0.0
@@ -423,9 +424,9 @@ PENS
 PLOT
 713
 273
-1032
+1057
 521
-Asexual Phenotype Frequencies
+Asexual Host Phenotype Frequencies
 time
 number of individuals
 0.0
@@ -444,86 +445,75 @@ PENS
 "orange-large" 1.0 0 -6995700 true "" "plot (count hosts with [ (color = orange ) and ( size = 3 ) and (sex = \"asexual\")])"
 
 SLIDER
-15
-170
-227
-203
-interbirth-interval
-interbirth-interval
-0
-100
-100
-1
-1
-ticks
-HORIZONTAL
-
-INPUTBOX
-16
-64
-226
-124
-carrying-capacity
-100
-1
-0
-Number
-
-SLIDER
 13
-430
-227
-463
-parasite-lifespan
-parasite-lifespan
+147
+225
+180
+interbirth-interval
+interbirth-interval
 0
 100
-30
+100.0
 1
 1
 ticks
 HORIZONTAL
 
 SLIDER
-14
-392
-226
-425
+12
+408
+225
+441
+parasite-lifespan
+parasite-lifespan
+0
+100
+10.0
+1
+1
+ticks
+HORIZONTAL
+
+SLIDER
+12
+369
+224
+402
 parasite-infectivity
 parasite-infectivity
 0
 1.0
-0.7
+0.0
 .01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-14
-310
-227
-343
+12
+330
+225
+363
 offspring-per-parasite
 offspring-per-parasite
 1
 200
-10
+20.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-14
-351
-227
-384
+12
+447
+225
+480
 parasite-mutation-rate
 parasite-mutation-rate
 0
 1.0
-0.1
+0.2
 .01
 1
 NIL
@@ -531,9 +521,9 @@ HORIZONTAL
 
 SWITCH
 13
-469
+288
 226
-502
+321
 show-parasites
 show-parasites
 0
@@ -541,9 +531,9 @@ show-parasites
 -1000
 
 PLOT
-1038
+1062
 10
-1359
+1387
 265
 Parasite Phenotype Frequencies
 time
@@ -564,11 +554,11 @@ PENS
 "orange-large" 1.0 0 -6995700 true "" "plot (count parasites with [ (color = orange - 2) and (size = 3 / 3)])"
 
 TEXTBOX
-14
-44
-232
-62
--------------- Hosts ---------------
+18
+46
+236
+64
+------------- Hosts --------------
 11
 0.0
 1
@@ -576,7 +566,7 @@ TEXTBOX
 PLOT
 713
 10
-1032
+1056
 265
 Sexual vs Asexual Strategies
 time
@@ -594,15 +584,65 @@ PENS
 
 TEXTBOX
 87
-12
+16
 154
-30
+34
 SETTINGS
 14
 0.0
 1
 
+SLIDER
+14
+66
+225
+99
+carrying-capacity
+carrying-capacity
+0
+1000
+100.0
+5
+1
+hosts
+HORIZONTAL
+
+MONITOR
+953
+394
+1051
+439
+# Asexual Hosts
+count hosts with [ sex = \"asexual\" ]
+17
+1
+11
+
+MONITOR
+1284
+393
+1379
+438
+# Sexual Hosts
+count hosts with [ sex != \"asexual\" ]
+17
+1
+11
+
+MONITOR
+1286
+129
+1373
+174
+# Parasites
+count parasites
+17
+1
+11
+
 @#$#@#$#@
+Compatible with NetLogo 6.0
+
 ## WHAT IS IT?
 
 Evolution of Sex is a NetLogo model that illustrates the advantages and disadvantages of sexual and asexual reproductive strategies. It seeks to demonstrate the answer to the question:
@@ -692,11 +732,15 @@ The purpose of this model is to demonstrate that under certain conditions sexual
 
 Finally, make sure to pay special attention to the graphical outputs. How do the host phenotype frequencies and parasite infection strategies affect each other? What patterns do you notice?
 
+## HOW TO CITE
+
+Crouse, K. N. (2016).  Evolution of Sex model. Evolutionary Anthropology Lab, Department of Anthropology, University of Minnesota, Minneapolis, MN.
+
 ## COPYRIGHT AND LICENSE
 
 Copyright 2016 K N Crouse.
 
-Acknowledgements: A special thanks to M L Wilson for comments and suggestions.
+Acknowledgements: Thanks to M L Wilson for comments and suggestions.
 
 This model was created at the University of Minnesota as part of a series of applets to illustrate principles in biological evolution.
 
@@ -1174,9 +1218,8 @@ Circle -7500403 true true 43 120 122
 Polygon -7500403 true true 45 165 60 135 90 105 117 80 133 61 142 47 150 30 154 150
 Polygon -7500403 true true 135 210 135 253 121 273 105 284 195 284 180 273 165 253 165 210
 Circle -13791810 true false 83 98 134
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -1293,7 +1336,7 @@ BUTTON
 522
 13
 649
-62
+46
 reproduce now
 NIL
 NIL
@@ -1464,7 +1507,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@
