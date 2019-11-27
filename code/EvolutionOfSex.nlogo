@@ -1,34 +1,34 @@
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-;:::::: Variable & Breed Declarations ::::::::::::::::::::::::::::::::::::::::::
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;-----------------------------------------------------------------------------------------------
+;:::::: Evolution of Sex :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;-----------------------------------------------------------------------------------------------
 
 globals [
   allele-color-types
   allele-size-types
   parasite-size-types
-  group-radius]
+  group-radius ]
 
 breed [ hosts host ]
 breed [ parasites parasite ]
 
 hosts-own [ allele11 allele12 allele21 allele22 sex infecting-parasite gestation ]
-parasites-own [ age host-host ]
+parasites-own [ age my-host ]
 
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-;:::::: Setup ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;-----------------------------------------------------------------------------------------------
+;:::::: Setup Procedures :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;-----------------------------------------------------------------------------------------------
 
 to setup
   clear-all
-  ask patches [ set pcolor green ]
-  setup-vars
+  ask patches [ set pcolor white ]
+  setup-parameters
   setup-parasites
   setup-hosts
   reset-ticks
 end
 
-to setup-vars
-  set allele-size-types [ 1 3 ]
+to setup-parameters
+  set allele-size-types [ 2 4 ]
   set allele-color-types [ orange blue ]
   setup-parasite-size-types
   set group-radius 20
@@ -36,10 +36,8 @@ end
 
 to setup-parasite-size-types
   set parasite-size-types []
-  foreach allele-size-types [ ?1 ->
-    let i ?1
-    foreach allele-size-types [ ??1 ->
-      let j ??1
+  foreach allele-size-types [ i ->
+    foreach allele-size-types [ j ->
       set parasite-size-types lput ( ( i + j ) / 2 ) parasite-size-types
     ]
   ]
@@ -47,7 +45,7 @@ to setup-parasite-size-types
 end
 
 to setup-parasites
-  create-parasites carrying-capacity
+  create-parasites host-carrying-capacity
   [
     initialize-parasite
   ]
@@ -56,21 +54,21 @@ end
 to initialize-parasite
   set label ""
   set hidden? (not show-parasites)
-  set age random parasite-lifespan
+  ;set age random parasite-lifespan
   set shape "circle"
   set xcor random-xcor
   set ycor random-ycor
-  set color ((one-of allele-color-types) - 2)
-  set size (one-of parasite-size-types) / 3
-  set host-host nobody
+  set color ((one-of allele-color-types) - 2) ; darker than hosts
+  set size (one-of parasite-size-types) / 3 ; smaller than hosts
+  set my-host nobody
 end
 
 to setup-hosts
-  create-hosts carrying-capacity
+  create-hosts host-carrying-capacity
   [
     set hidden? false
     set label ""
-    set gestation random interbirth-interval
+    ;set gestation random interbirth-interval
     set infecting-parasite nobody
     set xcor random-xcor
     set ycor random-ycor
@@ -84,9 +82,7 @@ to setup-hosts
 end
 
 to-report initialize-sex
-  ifelse random-float 1.0 < sexual-to-asexual-ratio
-  [ report coin-flip-sex ][
-    report "asexual" ]
+  ifelse random-float 1.0 < sexual-to-asexual-ratio [ report coin-flip-sex ][ report "asexual" ]
 end
 
 to-report coin-flip-sex
@@ -104,15 +100,10 @@ end
 to set-size-shape-color
   set size (allele21 + allele22) / 2
   set shape get-host-shape
-
-  if (position allele11 allele-color-types) < (position allele12 allele-color-types) [
-    set color allele12 ]
-
-  if (position allele11 allele-color-types) > (position allele12 allele-color-types) [
-    set color allele11 ]
-
-  if (position allele11 allele-color-types) = (position allele12 allele-color-types) [
-    set color allele11 ]
+  set color ifelse-value ( one-of [ true false ] ) [ allele11 ] [ allele12 ]
+;  if (position allele11 allele-color-types) < (position allele12 allele-color-types) [ set color allele12 ]
+;  if (position allele11 allele-color-types) > (position allele12 allele-color-types) [ set color allele11 ]
+;  if (position allele11 allele-color-types) = (position allele12 allele-color-types) [ set color allele11 ]
 end
 
 to-report get-host-shape
@@ -122,17 +113,18 @@ to-report get-host-shape
 end
 
 
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-;:::::: Runtime Procedures :::::::::::::::::::::::::::::::::::::::::::::::::::::
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;-----------------------------------------------------------------------------------------------
+;:::::: Go Procedures ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;-----------------------------------------------------------------------------------------------
 
 to go
   update-visibility-settings
-  ask parasites [ parasite-wander ]
-  ask parasites [ parasite-update-age ]
-  ask hosts [ hosts-wander ]
-  ask hosts [ host-update-gestation ]
+  ask hosts [ host-wander ]
+  ask hosts [ host-reproduce ]
   maintain-host-carrying-capacity
+  ask parasites [ parasite-wander ]
+  ask parasites [ parasite-reproduce ]
+  maintain-parasite-carrying-capacity
   tick
 end
 
@@ -141,99 +133,46 @@ to update-visibility-settings
   ask parasites [ set hidden? (not show-parasites) ]
 end
 
-to parasite-update-age
-  set age age + 1
-  if age > parasite-lifespan [
-    if host-host != nobody [ parasites-reproduce ]
-    die
-  ]
-end
-
-to host-update-gestation
-  set gestation gestation + 1
-  if gestation > interbirth-interval [
-    reproduce
-    set gestation 0
-  ]
-end
-
 to maintain-host-carrying-capacity
-  repeat (count hosts - carrying-capacity) [ ask one-of hosts [ remove-host ] ]
+  repeat (count hosts - host-carrying-capacity) [ ask one-of hosts [ remove-host ] ]
 end
 
-to execute-reproduce
-  let old-host-group hosts
-  ask old-host-group [
-    reproduce
-  ]
+to maintain-parasite-carrying-capacity
+  repeat (count parasites - parasite-carrying-capacity ) [ ask one-of parasites [ die ] ]
 end
 
-to reproduce
-  if [infecting-parasite] of self = nobody [
-    if [sex] of self = "asexual" [ ask self [ hosts-reproduce-asexually ]]
-    if [sex] of self = "female" [ ask self [ hosts-reproduce-sexually ]]
-  ]
-end
+;-----------------------------------------------------------------------------------------------
+;:::::: Host Procedures ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;-----------------------------------------------------------------------------------------------
 
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-;:::::: Agent Procedures :::::::::::::::::::::::::::::::::::::::::::::::::::::::
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-to hosts-wander
+to host-wander
   right random 90
   left random 90
   fd .3
   if infecting-parasite != nobody [ ask infecting-parasite [ move-to [patch-here] of myself ] ]
 end
 
-to parasite-wander
-  right random 90
-  left random 90
-  fd 1
-  attempt-infection
-end
-
-to attempt-infection
-  ask hosts-on patch-here [
-    let matching? (color = ([color] of myself + 2)) and (size = ([size] of myself * 3))
-    if matching? and infecting-parasite = nobody [
-      if random-float 1.0 < parasite-infectivity [
-        set infecting-parasite myself
-        ask infecting-parasite [ set host-host myself ]
-      ]
-    ]
+to host-reproduce
+  if ( random-float 1.0 < host-reproductive-rate and infecting-parasite = nobody ) [
+    if [sex] of self = "asexual" [ ask self [ hosts-reproduce-asexually ]]
+    if [sex] of self = "female" [ ask self [ hosts-reproduce-sexually ]]
   ]
-end
-
-to parasites-reproduce
-  hatch-parasites offspring-per-parasite
-  [
-    set age 0
-    set host-host nobody
-    if random-float 1.0 < parasite-mutation-rate [
-      initialize-parasite
-      set xcor [xcor] of self
-      set ycor [ycor] of self
-    ]
-  ]
-  ask host-host [ remove-host ]
 end
 
 to hosts-reproduce-asexually
-  hatch-hosts offspring-per-female [
-    set gestation 0 ; (random (interbirth-interval / 10))
+  hatch-hosts 1 [
     hosts-update-for-mutation
     set-size-shape-color
   ]
 end
 
 to hosts-reproduce-sexually
-  let eligible-males hosts in-radius group-radius with [ sex = "male" ]
+  let eligible-males hosts with [ sex = "male" ] ; in-radius group-radius
 
   if any? eligible-males [
     let mate one-of eligible-males
 
-    hatch-hosts offspring-per-female [
+    hatch-hosts 1 [
 
       let a11List []
       set a11List lput allele11 a11List
@@ -256,7 +195,7 @@ to hosts-reproduce-sexually
       set allele22 one-of a22List
 
       set sex coin-flip-sex
-      set gestation (random (interbirth-interval / 10))
+      ;set gestation (random (interbirth-interval / 10))
       hosts-update-for-mutation
       set-size-shape-color
     ]
@@ -280,15 +219,55 @@ to remove-host
   if infecting-parasite != nobody [ ask infecting-parasite [ die ] ]
   die
 end
+
+;-----------------------------------------------------------------------------------------------
+;:::::: Parasite Procedures ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;-----------------------------------------------------------------------------------------------
+
+to parasite-wander
+  right random 90
+  left random 90
+  fd 1
+  attempt-infection
+end
+
+to attempt-infection
+  if ( any? hosts-on patch-here ) [
+    ask one-of hosts-on patch-here [
+      let matching? (color = ([color] of myself + 2)) and (size = ([size] of myself * 3))
+      if matching? and [infecting-parasite] of self = nobody [
+        if ( random-float 1.0 < parasite-infectivity ) [
+          set infecting-parasite myself
+          ask infecting-parasite [ set my-host myself ]
+        ]
+      ]
+    ]
+  ]
+end
+
+to parasite-reproduce
+  if ( random-float 1.0 < parasite-reproductive-rate and my-host != nobody ) [
+    hatch-parasites 1
+    [
+      set my-host nobody
+      if random-float 1.0 < parasite-mutation-rate [
+        initialize-parasite
+        set xcor [xcor] of self
+        set ycor [ycor] of self
+      ]
+    ]
+    ;if ( my-host != nobody ) [ ask my-host [ remove-host ] ]
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-236
-51
-705
-521
+234
+49
+742
+558
 -1
 -1
-2.305
+5.0
 1
 10
 1
@@ -299,9 +278,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-199
+99
 0
-199
+99
 1
 1
 1
@@ -309,9 +288,9 @@ ticks
 30.0
 
 BUTTON
-472
+402
 10
-550
+480
 43
 NIL
 go
@@ -326,9 +305,9 @@ NIL
 1
 
 BUTTON
-388
+318
 10
-465
+395
 43
 NIL
 setup
@@ -344,24 +323,24 @@ NIL
 
 TEXTBOX
 18
-291
+245
 244
-309
+263
 ------------ Parasites -------------
 11
 0.0
 1
 
 SLIDER
-15
-249
-226
-282
+16
+202
+227
+235
 host-mutation-rate
 host-mutation-rate
 0
 1.0
-0.01
+0.0
 .01
 1
 NIL
@@ -383,10 +362,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-15
-210
-227
-243
+455
+650
+667
+683
 offspring-per-female
 offspring-per-female
 0
@@ -398,10 +377,10 @@ NIL
 HORIZONTAL
 
 PLOT
-1038
-273
-1359
-521
+1079
+311
+1400
+559
 Sexual Phenotype Frequencies
 time
 number of individuals
@@ -421,10 +400,10 @@ PENS
 "orange-large" 1.0 0 -6995700 true "" "plot (count hosts with [ (color = orange ) and (size = 3) and (sex != \"asexual\")])"
 
 PLOT
-713
-273
-1032
-521
+754
+311
+1073
+559
 Asexual Phenotype Frequencies
 time
 number of individuals
@@ -444,15 +423,15 @@ PENS
 "orange-large" 1.0 0 -6995700 true "" "plot (count hosts with [ (color = orange ) and ( size = 3 ) and (sex = \"asexual\")])"
 
 SLIDER
-15
-170
-227
-203
+238
+652
+450
+685
 interbirth-interval
 interbirth-interval
 0
 1000
-500.0
+1000.0
 1
 1
 ticks
@@ -463,17 +442,17 @@ INPUTBOX
 64
 226
 124
-carrying-capacity
+host-carrying-capacity
 1000.0
 1
 0
 Number
 
 SLIDER
-13
-430
-227
-463
+455
+614
+669
+647
 parasite-lifespan
 parasite-lifespan
 0
@@ -486,24 +465,24 @@ HORIZONTAL
 
 SLIDER
 14
-392
-226
-425
+333
+225
+366
 parasite-infectivity
 parasite-infectivity
 0
 1.0
-0.5
+1.0
 .01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-14
-310
-227
-343
+237
+615
+450
+648
 offspring-per-parasite
 offspring-per-parasite
 1
@@ -516,24 +495,24 @@ HORIZONTAL
 
 SLIDER
 14
-351
-227
-384
+405
+225
+438
 parasite-mutation-rate
 parasite-mutation-rate
 0
 1.0
-0.1
+0.05
 .01
 1
 NIL
 HORIZONTAL
 
 SWITCH
-13
-469
-226
-502
+489
+10
+637
+43
 show-parasites
 show-parasites
 0
@@ -541,10 +520,10 @@ show-parasites
 -1000
 
 PLOT
-1038
-10
-1359
-265
+1079
+48
+1400
+303
 Parasite Phenotype Frequencies
 time
 number of individuals
@@ -574,10 +553,10 @@ TEXTBOX
 1
 
 PLOT
-713
-10
-1032
-265
+754
+48
+1073
+303
 Sexual vs Asexual Strategies
 time
 number of individuals
@@ -602,10 +581,77 @@ SETTINGS
 0.0
 1
 
+SLIDER
+16
+166
+227
+199
+host-reproductive-rate
+host-reproductive-rate
+0
+1
+0.01
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+14
+369
+225
+402
+parasite-reproductive-rate
+parasite-reproductive-rate
+0
+1
+0.1
+.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+684
+615
+895
+648
+parasite-mortality-rate
+parasite-mortality-rate
+0
+1
+0.0
+.001
+1
+NIL
+HORIZONTAL
+
+INPUTBOX
+14
+270
+225
+330
+parasite-carrying-capacity
+1000.0
+1
+0
+Number
+
+MONITOR
+44
+506
+199
+551
+NIL
+count parasites with [ my-host != nobody ]
+17
+1
+11
+
 @#$#@#$#@
 ## WHAT IS IT?
 
-Evolution of Sex is a NetLogo model that illustrates the advantages and disadvantages of sexual and asexual reproductive strategies. It seeks to demonstrate the answer to the question:
+This model illustrates the advantages and disadvantages of sexual and asexual reproductive strategies. It seeks to demonstrate the answer to the question:
 
 #### "Why do we have sex?"
 
@@ -627,7 +673,7 @@ From this, it may seem like sexual reproduction is an evolutionary puzzle as it 
 
 When the model is initialized, a population of hosts and parasites are created.
 
-There are many options for the reproductive strategy of the initial host population: 100% sexual reproducers, 100% asexual reproducers, or some ratio of the two. They come in different shapes: spade = male, heart = female, club = asexual. They come in different colors: orange or blue. And finally, they come in different sizes: small, medium, large. The combination of these options represents the phenotype of the host.
+There are many options for the reproductive strategy of the initial host population according to the SEXUAL-TO-ASEXUAL-RATIO: 100% sexual reproducers, 100% asexual reproducers, or some ratio of the two. They come in different shapes: spade = male, heart = female, club = asexual. They come in different colors: orange or blue. And finally, they come in different sizes: small, medium, large. The combination of these options represents the phenotype of the host.
 
 The phenotype is determined by the host's genotype. There are two alleles for color: orange and blue. Blue is dominant over orange. There are two alleles for size: small and large. These alleles are codominant, which allows for the expression of a medium-sized host if they possess both one small and one large allele.
 
@@ -698,7 +744,7 @@ Thank you to M L Wilson for comments and suggestions.
 
 ## COPYRIGHT AND LICENSE
 
-© 2016 K N Crouse.
+© 2019 K N Crouse.
 
 The model may be freely used, modified and redistributed provided this copyright is included and the resulting models are not used for profit.
 
@@ -1198,9 +1244,9 @@ VIEW
 1
 1
 0
-199
+99
 0
-199
+99
 
 BUTTON
 91
