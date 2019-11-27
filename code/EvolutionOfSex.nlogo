@@ -221,7 +221,7 @@ end
 
 to hosts-reproduce-asexually
   hatch-hosts offspring-per-female [
-    set gestation (random (interbirth-interval / 10))
+    set gestation 0 ; (random (interbirth-interval / 10))
     hosts-update-for-mutation
     set-size-shape-color
   ]
@@ -282,13 +282,13 @@ to remove-host
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-237
-48
-701
-513
+236
+51
+705
+521
 -1
 -1
-11.122
+2.305
 1
 10
 1
@@ -299,9 +299,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-40
+199
 0
-40
+199
 1
 1
 1
@@ -361,7 +361,7 @@ host-mutation-rate
 host-mutation-rate
 0
 1.0
-0.02
+0.01
 .01
 1
 NIL
@@ -451,8 +451,8 @@ SLIDER
 interbirth-interval
 interbirth-interval
 0
-100
-100.0
+1000
+500.0
 1
 1
 ticks
@@ -464,7 +464,7 @@ INPUTBOX
 226
 124
 carrying-capacity
-100.0
+1000.0
 1
 0
 Number
@@ -478,7 +478,7 @@ parasite-lifespan
 parasite-lifespan
 0
 100
-30.0
+100.0
 1
 1
 ticks
@@ -493,7 +493,7 @@ parasite-infectivity
 parasite-infectivity
 0
 1.0
-0.7
+0.5
 .01
 1
 NIL
@@ -1198,9 +1198,9 @@ VIEW
 1
 1
 0
-40
+199
 0
-40
+199
 
 BUTTON
 91
