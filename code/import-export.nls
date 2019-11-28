@@ -1,0 +1,153 @@
+;--------------------------------------------------------------------------------------------------------------------
+;
+;  oo                                         dP                                                           dP   
+;                                             88                                                           88   
+;  dP 88d8b.d8b. 88d888b. .d8888b. 88d888b. d8888P          .d8888b. dP.  .dP 88d888b. .d8888b. 88d888b. d8888P 
+;  88 88'`88'`88 88'  `88 88'  `88 88'  `88   88   88888888 88ooood8  `8bd8'  88'  `88 88'  `88 88'  `88   88   
+;  88 88  88  88 88.  .88 88.  .88 88         88            88.  ...  .d88b.  88.  .88 88.  .88 88         88   
+;  dP dP  dP  dP 88Y888P' `88888P' dP         dP            `88888P' dP'  `dP 88Y888P' `88888P' dP         dP   
+;                88                                                           88                                
+;                dP                                                           dP               
+;
+; © 2019 K N Crouse
+;--------------------------------------------------------------------------------------------------------------------
+;
+; This extension allow users to import and export any collection of turtles. It was originally written
+; for the NetLogo model B3GET, but can be used as an extension for any NetLogo model that requires import-export
+; functionality for turtles.
+;
+;--------------------------------------------------------------------------------------------------------------------
+
+;--------------------------------------------------------------------------------------------------------------------
+; EXPORT-TURTLES-TO
+;
+; This is the same as EXPORT-TURTLE-TO function except it applies to all turtles in TURTLESET.
+;
+; CALLER: observer
+; TURTLESET: is the set of turtles to export to FILENAME.
+; FILNAME: includes the full directory path to appropriate CSV file (if one does not exist, it will be created here).
+; VARIABLES-TO-RECORD: is a list of string names that the caller-turtle has access to, including global variables, function outputs, and its own state variables.
+;
+;--------------------------------------------------------------------------------------------------------------------
+
+to export-turtles-to [ turtleset filename variables-to-record ]
+  ask turtleset [ export-turtle-to filename variables-to-record ]
+end
+
+;--------------------------------------------------------------------------------------------------------------------
+; EXPORT-TURTLE-TO
+;
+; This is a turtle-only function that allows it to record any VARIABLES-TO-RECORD (state-variables and other information 
+; it has access to) on external file FILENAME. FILENAME contains rows representing eacn turtle and columns representing 
+; the variables associated with those turtles.
+;
+; CALLER: observer
+; FILNAME: includes the full directory path to appropriate CSV file (if one does not exist, it will be created here).
+; VARIABLES-TO-RECORD: is a list of string names that the caller-turtle has access to, including global variables, function outputs, and its own state variables.
+;
+; THINGS TO KEEP IN MIND:
+;  - You should save ids rather than direct turtle references and fix with code after because who cannot be modified.
+;  - You CAN save multiple different turtles breeds to the same file
+;  - can handle boolean, numbers, strings, and lists (if first convert to string using csv:to-string)
+;--------------------------------------------------------------------------------------------------------------------
+
+to export-turtle-to [ filename variables-to-record ]
+  let body []
+  let header []
+  
+  ; Update or Create header for FILENAME
+  ifelse ( file-exists? filename )  
+  
+  ; File with FILENAME already exists?
+  [ file-open filename
+    let existing-file csv:from-file filename 
+    set header ifelse-value ( length existing-file > 0 ) [ first existing-file ] [ [] ]
+    set body ifelse-value ( length existing-file > 0 ) [ but-first existing-file ] [ [] ]
+    
+    ; Update header of FILENAME with any new variables
+    foreach variables-to-record [ text ->
+      if (not member? text header) [ 
+        set header lput text header
+    ]]
+    csv:to-file filename (sentence (list header ) body ) ]
+  
+  ; File with FILENAME does NOT already exist?
+  [ file-open filename
+    csv:to-file filename (list variables-to-record) ]
+  
+  ; Use updated header to retrieve appropriate data from function-caller
+  let new-header first csv:from-file filename 
+  let data-list []
+  foreach new-header [ text ->
+    carefully [ set data-list (sentence data-list (list run-result text ) ) ] [ set data-list (sentence data-list "" ) ]  
+  ]
+  
+  csv:to-file filename (sentence (list new-header ) body (list data-list) )
+  file-close
+  
+end
+
+;----------------------------------------------------------------------------------------------------------------------------
+; IMPORT-TURTLES-FROM
+;
+; Create new turtles whose state variables are imported from FILENAME. Creates one turtle for every row in the dataset.                                      
+; Each turtle is given state values from every corresponding matching column in the dataset. State values are from state variables 
+; that match the header titles in the first row of the dataset.
+; 
+; CALLER: observer
+; FILNAME: includes the full directory path to appropriate CSV file.                      
+;
+;----------------------------------------------------------------------------------------------------------------------------
+
+to import-turtles-from [ filename ]
+  
+  ; If FILENAME does NOT exist, open a popup directory.
+  let file-to-import ifelse-value ( file-exists? filename ) [ filename ] [ user-file ]
+  
+  if ( is-string? file-to-import and file-exists? file-to-import ) [ 
+    file-open file-to-import
+    let data-from-filename csv:from-file file-to-import
+    
+    let header-block first data-from-filename ; Header information from FILE-TO-IMPORT
+    let data-block but-first data-from-filename ; FILE-TO-IMPORT data without header information
+    
+    let i 0 ; index variable to iteratively search through each row in the DATA-BLOCK
+    let j 0 ; index variable to iteratively search through each header in the HEADER-BLOCK
+    
+    ; FOR EACH row in the DATA-BLOCK create a generic turtle
+    foreach data-block [ row -> 
+      create-turtles 1 [
+        set j 0
+        
+        ; FOR EACH header in the HEADER-BLOCK set turtle's state variables to the corresponding values
+        foreach header-block [ header ->
+          let value item j item i data-block ; the value for turtle i taken from column j of the DATA-BLOCK
+          
+          ; Put quotes around everything that is not a Number, Breed, or Boolean or List
+          if (not is-number? value and header != "breed" and not is-boolean? value and not member? "\n" value) [ set value (word "\"" value "\"")]
+          
+          ;(ifelse ; fix to not rely on chromosome code
+            ;( header = "chromosome.I" ) [ carefully [set chromosome.I csv:from-string value ][]]
+            ;( header = "chromosome.II" ) [ carefully [ set chromosome.II csv:from-string value ][]]
+            ;[ 
+          carefully [ run (word "set " header " " value ) ] []
+          ;])
+          
+          
+          ;          ; Put quotes around everything that is not a Number, Breed, or Boolean or List
+          ;          if ( not is-number? value and header != "breed" and not is-boolean? value ) [
+          ;            if ( not member? "\n" value ) [ set value (word "\"" value "\"") ]
+          ;            if ( member? "\n" value ) [ set value (word "\"" csv:from-string value "\"" )]
+          ;          ]
+          ;          
+          ;          ; set each state variable according to the header and value
+          ;          carefully [ run (word "set " header " " value ) ] []
+
+        set j j + 1 ] 
+      set i i + 1 ]]
+  
+  file-close ]
+end
+
+
+

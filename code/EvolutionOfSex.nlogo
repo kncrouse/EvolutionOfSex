@@ -2,6 +2,12 @@
 ;:::::: Evolution of Sex ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ;------------------------------------------------------------------------------------
 
+extensions [ csv ]
+
+__includes [
+  "data.nls"
+]
+
 globals [
   allele-color-types
   allele-size-types
@@ -10,8 +16,8 @@ globals [
 breed [ hosts host ]
 breed [ parasites parasite ]
 
-hosts-own [ allele11 allele12 allele21 allele22 sex infecting-parasite gestation ]
-parasites-own [ age my-host ]
+hosts-own [ allele11 allele12 allele21 allele22 sex infecting-parasite ]
+parasites-own [ my-host ]
 
 ;------------------------------------------------------------------------------------
 ;:::::: Setup :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -27,8 +33,8 @@ to setup
 end
 
 to setup-parameters
-  set allele-size-types [ 1 2 3 ] ; n-of size-allele-count
-  set allele-color-types [ orange blue green red ] ;n-of color-allele-count yellow turquoise magenta lime violet pink cyan
+  set allele-size-types [ 1 2 ]
+  set allele-color-types [ orange blue ]
   setup-parasite-size-types
 end
 
@@ -49,7 +55,6 @@ end
 to initialize-parasite
   set label ""
   set hidden? (not show-parasites)
-  set age random parasite-lifespan
   set shape "circle"
   set xcor random-xcor
   set ycor random-ycor
@@ -63,7 +68,6 @@ to setup-hosts
   [
     set hidden? false
     set label ""
-    set gestation random interbirth-interval
     set infecting-parasite nobody
     set xcor random-xcor
     set ycor random-ycor
@@ -133,13 +137,13 @@ to go
 
   ; hosts
   ask hosts [ hosts-wander ]
-  ask hosts [ host-update-gestation ]
+  ask hosts [ host-reproduce ]
   maintain-host-carrying-capacity
 
   ; parasites
   ask parasites [ parasite-wander ]
-  ask parasites [ parasite-update-age ]
-  maintain-parasite-carrying-capacity
+  ask parasites [ parasites-reproduce ]
+  ask parasites [ parasite-death ]
 
   tick
 end
@@ -151,10 +155,6 @@ end
 
 to maintain-host-carrying-capacity
   repeat (count hosts - host-population-density * count patches ) [ ask one-of hosts [ remove-host ] ]
-end
-
-to maintain-parasite-carrying-capacity
-  repeat ( count parasites - parasite-population-density * count patches ) [ ask one-of parasites [ die ] ]
 end
 
 ;------------------------------------------------------------------------------------
@@ -180,27 +180,17 @@ to attempt-infection
   ]
 end
 
-to host-update-gestation
-;  set gestation gestation + 1
-;  if gestation > interbirth-interval [
-;    reproduce
-;    set gestation 0
-;  ]
+to host-reproduce
   if ( random-float 1.0 < host-reproductive-rate ) [
-    reproduce
-  ]
-end
-
-to reproduce
-  if [infecting-parasite] of self = nobody [
-    if [sex] of self = "asexual" [ ask self [ hosts-reproduce-asexually ]]
-    if [sex] of self = "female" [ ask self [ hosts-reproduce-sexually ]]
+    if [infecting-parasite] of self = nobody [
+      if [sex] of self = "asexual" [ ask self [ hosts-reproduce-asexually ]]
+      if [sex] of self = "female" [ ask self [ hosts-reproduce-sexually ]]
+    ]
   ]
 end
 
 to hosts-reproduce-asexually
-  hatch-hosts offspring-per-female [
-    set gestation 0 ; (random (interbirth-interval / 10))
+  hatch-hosts 1 [
     hosts-update-for-mutation
     set-size-shape-color
   ]
@@ -212,7 +202,7 @@ to hosts-reproduce-sexually
   if any? eligible-males [
     let mate one-of eligible-males
 
-    hatch-hosts offspring-per-female [
+    hatch-hosts 1 [
 
       let a11List []
       set a11List lput allele11 a11List
@@ -235,7 +225,6 @@ to hosts-reproduce-sexually
       set allele22 one-of a22List
 
       set sex coin-flip-sex
-      set gestation (random (interbirth-interval / 10))
       hosts-update-for-mutation
       set-size-shape-color
     ]
@@ -270,49 +259,33 @@ to parasite-wander
 end
 
 to parasites-reproduce
-  hatch-parasites offspring-per-parasite
-  [
-    set age 0
-    set my-host nobody
-    if random-float 1.0 < parasite-mutation-rate [
-      initialize-parasite
-      set xcor [xcor] of self
-      set ycor [ycor] of self
+  if ( my-host != nobody and random-float 1.0 < parasite-reproductive-rate ) [
+    hatch-parasites 1
+    [
+      if random-float 1.0 < parasite-mutation-rate [
+        initialize-parasite
+        set xcor [xcor] of self
+        set ycor [ycor] of self
+      ]
     ]
   ]
-  ask my-host [ remove-host ]
 end
 
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;
-
-to parasite-update-age
-  set age age + 1
-  if age > parasite-lifespan [
-    if my-host != nobody [ parasites-reproduce ]
+to parasite-death
+  if ( random-float 1.0 < parasite-mortality-rate ) [
+    if ( my-host != nobody ) [ ask my-host [ remove-host ]]
     die
   ]
 end
-
-
-
-
-
-
-
-
-
-
 @#$#@#$#@
 GRAPHICS-WINDOW
-237
-49
-704
-517
+229
+10
+740
+522
 -1
 -1
-2.3
+2.515
 1
 10
 1
@@ -333,9 +306,9 @@ ticks
 30.0
 
 BUTTON
-393
+113
 10
-471
+218
 43
 NIL
 go
@@ -350,9 +323,9 @@ NIL
 1
 
 BUTTON
-309
+12
 10
-386
+107
 43
 NIL
 setup
@@ -367,64 +340,49 @@ NIL
 1
 
 TEXTBOX
-17
-310
-243
-328
+12
+280
+238
+298
 ------------ Parasites -------------
 11
 0.0
 1
 
 SLIDER
-16
-220
-227
-253
-host-mutation-rate
-host-mutation-rate
-0
-1.0
-0.01
-.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-16
-183
-227
-216
-sexual-to-asexual-ratio
-sexual-to-asexual-ratio
-0
-1.0
-0.5
-.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-478
-571
-690
-604
-offspring-per-female
-offspring-per-female
-0
 10
+227
+221
+260
+host-mutation-rate
+host-mutation-rate
+0
 1.0
+0.02
+.01
 1
+NIL
+HORIZONTAL
+
+SLIDER
+9
+119
+220
+152
+sexual-to-asexual-ratio
+sexual-to-asexual-ratio
+0
+1.0
+0.2
+.01
 1
 NIL
 HORIZONTAL
 
 PLOT
-1038
+1075
 273
-1359
+1396
 521
 Sexual Phenotype Frequencies
 time
@@ -445,9 +403,9 @@ PENS
 "orange-large" 1.0 0 -6995700 true "" "plot (count hosts with [ (color = orange ) and (size = 3) and (sex != \"asexual\")])"
 
 PLOT
-713
+750
 273
-1032
+1069
 521
 Asexual Phenotype Frequencies
 time
@@ -468,95 +426,50 @@ PENS
 "orange-large" 1.0 0 -6995700 true "" "plot (count hosts with [ (color = orange ) and ( size = 3 ) and (sex = \"asexual\")])"
 
 SLIDER
-478
-531
-690
-564
-interbirth-interval
-interbirth-interval
-0
-1000
-208.0
-1
-1
-ticks
-HORIZONTAL
-
-SLIDER
-709
-569
-923
-602
-parasite-lifespan
-parasite-lifespan
-0
-100
-100.0
-1
-1
-ticks
-HORIZONTAL
-
-SLIDER
-13
-414
-225
-447
+8
+347
+220
+380
 parasite-infectivity
 parasite-infectivity
 0
 1.0
-1.0
+0.2
 .01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-709
-530
-922
-563
-offspring-per-parasite
-offspring-per-parasite
-1
-200
-30.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-13
-378
-226
-411
+7
+419
+220
+452
 parasite-mutation-rate
 parasite-mutation-rate
 0
 1.0
-0.15
+0.02
 .01
 1
 NIL
 HORIZONTAL
 
 SWITCH
-481
-10
-630
-43
+12
+49
+217
+82
 show-parasites
 show-parasites
-1
+0
 1
 -1000
 
 PLOT
-1036
+1073
 10
-1357
+1394
 265
 Parasite Phenotype Frequencies
 time
@@ -577,23 +490,23 @@ PENS
 "orange-large" 1.0 0 -6995700 true "" "plot (count parasites with [ (color = orange - 2) and (size = 3 / 3)])"
 
 TEXTBOX
-16
-121
-234
-139
+9
+97
+227
+115
 -------------- Hosts ---------------
 11
 0.0
 1
 
 PLOT
-713
+750
 10
-1032
+1069
 265
 Sexual vs Asexual Strategies
 time
-number of individuals
+percent of individuals
 0.0
 10.0
 0.0
@@ -605,98 +518,62 @@ PENS
 "asexual" 1.0 0 -4539718 true "" "plot ((count hosts with [ sex = \"asexual\" ]) / count hosts )"
 "sexual" 1.0 0 -11053225 true "" "plot ((count hosts with [ sex != \"asexual\" ]) / count hosts )"
 
-TEXTBOX
-87
-12
-154
-30
-SETTINGS
-14
-0.0
-1
-
 SLIDER
-17
-37
-226
-70
-color-allele-count
-color-allele-count
-1
-10
-2.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-17
-73
-227
-106
-size-allele-count
-size-allele-count
-1
-10
-2.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-16
-145
-227
-178
+9
+155
+220
+188
 host-population-density
 host-population-density
 0
 1
-0.03
+0.02
 .01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-13
-341
-226
-374
-parasite-population-density
-parasite-population-density
+8
+311
+221
+344
+parasite-mortality-rate
+parasite-mortality-rate
 0
 1
-0.54
-.01
+0.004
+.001
 1
 NIL
 HORIZONTAL
 
-MONITOR
-65
-526
-296
-571
-birth rate
-count hosts with [ gestation = interbirth-interval ] / count hosts
-17
-1
-11
-
 SLIDER
-16
-256
-227
-289
+9
+191
+220
+224
 host-reproductive-rate
 host-reproductive-rate
 0
 1
+0.002
 0.001
-0.001
+1
+NIL
+HORIZONTAL
+
+SLIDER
+8
+383
+220
+416
+parasite-reproductive-rate
+parasite-reproductive-rate
+0
+1
+0.08
+.001
 1
 NIL
 HORIZONTAL
@@ -793,11 +670,11 @@ Finally, make sure to pay special attention to the graphical outputs. How do the
 
 ## ACKNOWLEDGEMENTS
 
-Thank you to M L Wilson for comments and suggestions.
+Thank you to M L Wilson for the conceptual idea of this model.
 
 ## COPYRIGHT AND LICENSE
 
-© 2016 K N Crouse.
+© 2019 K N Crouse.
 
 The model may be freely used, modified and redistributed provided this copyright is included and the resulting models are not used for profit.
 
@@ -1278,6 +1155,42 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="parameter-explore" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <final>carefully [ collect-data ] [ ]</final>
+    <exitCondition>( count parasites = 0 or
+    ( sexual-to-asexual-ratio &gt; 0
+      and sexual-to-asexual-ratio &lt; 1
+      and (( count hosts with [ sex = "asexual" ] = count hosts )
+        or ( count hosts with [ sex != "asexual" ] = count hosts ))))</exitCondition>
+    <enumeratedValueSet variable="sexual-to-asexual-ratio">
+      <value value="0.25"/>
+      <value value="0.5"/>
+      <value value="0.75"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="host-population-density" first="0.02" step="0.02" last="0.1"/>
+    <steppedValueSet variable="host-reproductive-rate" first="0.002" step="0.002" last="0.01"/>
+    <enumeratedValueSet variable="host-mutation-rate">
+      <value value="0.05"/>
+      <value value="0.1"/>
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="parasite-mortality-rate" first="0.002" step="0.002" last="0.01"/>
+    <enumeratedValueSet variable="parasite-infectivity">
+      <value value="0.25"/>
+      <value value="0.5"/>
+      <value value="0.75"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="parasite-reproductive-rate" first="0.02" step="0.02" last="0.1"/>
+    <enumeratedValueSet variable="parasite-mutation-rate">
+      <value value="0.05"/>
+      <value value="0.1"/>
+      <value value="0.15"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 VIEW
 238

@@ -1,0 +1,327 @@
+;;----------------------------------------------------------------------------------------------
+;; 
+;;  .8888b oo dP                   
+;;  88   "    88                   
+;;  88aaa  dP 88 .d8888b. .d8888b. 
+;;  88     88 88 88ooood8 Y8ooooo. 
+;;  88     88 88 88.  ...       88 
+;;  dP     dP dP `88888P' `88888P' 
+;; 
+;; © 2019 K N Crouse
+;;----------------------------------------------------------------------------------------------
+;; 
+;; This extension contains all functions that allow users to create files for recording
+;; data related to the simulation.
+;;
+;;----------------------------------------------------------------------------------------------
+;
+;;----------------------------------------------------------------------------------------------
+;; METAFILE FILES
+;;----------------------------------------------------------------------------------------------
+;
+;to-report metafile-exists?
+;  report file-exists? "../output/metafile.csv"
+;end
+;
+;to setup-metafile
+;  
+;  if ( not metafile-exists? ) [
+;    
+;    file-open "../output/metafile.csv"
+;    csv:to-file "../output/metafile.csv" (list (list
+;      "date-and-time"
+;      "path-to-experiment"
+;      "model-version"
+;      "simulation-id"
+;      "ticks"
+;      "file-type"
+;      "file-name"
+;      "documentation-notes"
+;      "population-input" 
+;      "genotype-input"
+;      "plant-annual-cycle" 
+;      "plant-seasonality" 
+;      "plant-minimum-neighbors" 
+;      "plant-maximum-neighbors" 
+;      "plant-daily-cycle" 
+;      "plant-quality"
+;      "world-width" 
+;      "world-height"
+;      "deterioration-rate" 
+;      "selection-rate"
+;      "collect-data?" 
+;      "selection-on?"
+;      "useful-commands"
+;      "command-input"
+;    ))
+;    
+;    file-close ]
+;end
+;
+;to update-metafile [ type-of-file name-of-file ]
+;  
+;  ; Save whatever is currently in the METAFILE or create new
+;  if ( not metafile-exists? ) [ setup-metafile ]
+;  let old-metafile csv:from-file "../output/metafile.csv"
+;  ;let current-runtime go-runtime
+;  
+;  if documentation-notes = "" [ set documentation-notes "Metafile updated." ]
+;  
+;  ; Update METAFILE with a new row of FILE information
+;  file-open "../output/metafile.csv"
+;  csv:to-file "../output/metafile.csv"
+;  (lput
+;    (list 
+;      date-and-time
+;      path-to-experiment
+;      model-version
+;      simulation-id
+;      ticks
+;      type-of-file
+;      name-of-file
+;      documentation-notes
+;      population genotype
+;      plant-annual-cycle 
+;      plant-seasonality
+;      plant-minimum-neighbors 
+;      plant-maximum-neighbors
+;      plant-daily-cycle 
+;      plant-quality
+;      world-width 
+;      world-height
+;      deterioration-rate
+;      selection-rate
+;      collect-data? 
+;      selection-on?
+;      useful-commands
+;      command-input 
+;    )
+;    
+;    old-metafile )
+;  
+;  set documentation-notes ""
+;  file-close
+;end
+;
+;;----------------------------------------------------------------------------------------------
+;; WORLD FILES
+;;----------------------------------------------------------------------------------------------
+;
+;to save-world
+;  export-world (word path-to-experiment "/w" but-first simulation-id "-" ticks ".csv") 
+;  set documentation-notes (word "Simulation " simulation-id " save to w" but-first simulation-id "-" ticks ". " documentation-notes )
+;  update-metafile "world" (word "w" but-first simulation-id "-" ticks )
+;end
+;
+;
+;;----------------------------------------------------------------------------------------------
+;; SIMULATION FILES
+;;----------------------------------------------------------------------------------------------
+;
+;to-report generate-simulation-id
+;  let alphabet [ "A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z" ]
+;  report ( word "s" random 99 one-of alphabet one-of alphabet one-of alphabet )
+;end
+;
+;to new-simulation [ sim-id ]
+;  clear-output
+;  output-print " ---------------------------------------------------------------------------"
+;  output-print (word " NEW SIMULATION : " )
+;  output-print " ---------------------------------------------------------------------------"
+;  set simulation-id sim-id
+;  output-print (word " Simulation " simulation-id " created.")
+;  set documentation-notes (word "Simulation " simulation-id " created. " documentation-notes )
+;  update-metafile "simulation" simulation-id   
+;end
+;
+;to update-simulation
+;  clear-output
+;  output-print " ---------------------------------------------------------------------------"
+;  output-print (word " SAVE SIMULATION : " simulation-id )
+;  output-print " ---------------------------------------------------------------------------"
+;  
+;  ifelse ( simulation-id = 0 ) 
+;  [ new-simulation generate-simulation-id ]
+;  [ set documentation-notes (word "Simulation " simulation-id " saved. " documentation-notes )
+;    update-metafile "simulation" simulation-id 
+;    output-print " Simulation successfully saved." ]
+;  
+;end
+;
+;;----------------------------------------------------------------------------------------------
+;; POPULATION FILES
+;;----------------------------------------------------------------------------------------------
+;
+;to-report generate-population-id
+;  let alphabet [ "A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z" ]
+;  report ( word "p" random 99 one-of alphabet one-of alphabet one-of alphabet )
+;end
+;
+;to-report population-file-exists?
+;  report file-exists? ( word path-to-experiment "/" population ".csv" )
+;end
+;
+;to import-population [ path ]
+;  clear-output
+;  output-print " ---------------------------------------------------------------------------"
+;  output-print (word " IMPORT POPULATION : " ( remove ".csv" remove ( word path-to-experiment "/") path ))
+;  output-print " ---------------------------------------------------------------------------"
+;  
+;  ifelse population-file-exists? [  
+;    
+;    import-turtles-from path
+;    
+;    ask anima1s [
+;      
+;      if (life.history = "gestatee" or life.history = "infant" ) [ die ]
+;      ask anima1s with [ biological.sex = "female" and life.history = "adult" ] [ set female.fertility "cycling" ]
+;      
+;      set meta-id random 9999999
+;      set carried.items []
+;      set group-transfers-list []
+;      set matings-list []
+;      set conceptions-list []
+;      set cells-occupied []
+;      set infanticide-list []
+;      set decision.vectors []
+;      
+;      ; compatibility with B3GET 1.0.2 and earlier population files:
+;      if ( stomach.capacity = 0 ) [ set stomach.capacity 1 ]
+;      
+;    ]
+;    
+;    ask groups [
+;      
+;      let current-group-members group-members
+;      set meta-id random 9999999
+;      ask current-group-members [ set group.identity [meta-id] of myself ]
+;      
+;    ]
+;    
+;    set documentation-notes (word "Population " ( remove ".csv" remove ( word path-to-experiment "/") path ) " imported. " documentation-notes )
+;    update-metafile "population" remove ( word path-to-experiment "/") path
+;    output-print " Population import successful."
+;    
+;  ] [ set population "" ]
+;  
+;end
+;
+;to save-population [ path ]
+;  clear-output
+;  output-print " ---------------------------------------------------------------------------"
+;  output-print (word " SAVE POPULATION : " ( remove ".csv" remove ( word path-to-experiment "/") path ))
+;  output-print " ---------------------------------------------------------------------------"
+;  
+;  ifelse ( file-exists? path )
+;  [ 
+;    let answer user-yes-or-no? 
+;    (word "The population " remove ".csv" remove ( word path-to-experiment "/") path " already exists. "
+;      "Would you like to: [ YES ] overwrite the existing file with current population, "
+;      "[ NO ] save current population to a different randomly generated file name, "
+;      "or [ HALT ] forget the whole darn thing?" )
+;    ifelse ( answer ) [ file-delete path save-population path ] [ save-population generate-population-id ]
+;    
+;  ][
+;    
+;    let selected-groups []
+;    
+;    let group-list ( list "breed" "meta-id"
+;      "color" "heading" "xcor" "ycor"
+;      "shape" "label" "label-color" "hidden?" "size" 
+;      "pen-size" "pen-mode" )
+;    
+;    let turtle-list (list "breed" "meta-id" "age"
+;      "color" "heading" "xcor" "ycor" "label" "label-color"
+;      "shape" "hidden?" "size" "pen-size" "pen-mode"
+;      "biological.sex" "life.history" "female.fertility" "energy.supply" 
+;      "group.identity" "is.dead" "alpha.signal" "beta.signal" "gamma.signal"
+;      "chromosome.I" "chromosome.II" "identity.I" "identity.II"
+;      "living.chance" "body.size" "body.shade" "stomach.capacity" "mutation.chance"
+;      "sex.ratio" "litter.size" "conception.chance"
+;      "day.perception.angle" "night.perception.angle" "audio.perception.angle"
+;      "day.perception.range" "night.perception.range" "audio.perception.range"
+;      "vocal.range" "alpha.chance" "beta.chance" "gamma.chance"
+;      "birthing.chance" "weaning.chance" "infancy.chance"
+;      "juvenility.chance" "adulthood.chance" "senescency.chance"
+;      "x.magnitude" "y.magnitude" )
+;    
+;    ask anima1s [
+;      
+;      if ( not member? group.identity selected-groups ) [ set selected-groups lput group.identity selected-groups ]
+;      
+;      ; turtle variables can only be saved in string format
+;      set chromosome.I csv:to-string chromosome.I
+;      set chromosome.II csv:to-string chromosome.II
+;      export-turtle-to path turtle-list 
+;      set chromosome.I csv:from-string chromosome.I
+;      set chromosome.II csv:from-string chromosome.II 
+;      
+;    ]
+;    
+;    foreach selected-groups [ g ->
+;      ask one-of groups with [ meta-id = g ] [ export-turtle-to path group-list ]
+;    ]
+;    
+;    set documentation-notes (word "New population " (remove ".csv" remove ( word path-to-experiment "/") path ) " saved. " documentation-notes )
+;    update-metafile "population" remove ".csv" remove ( word path-to-experiment "/") path
+;    output-print " Population successfully saved."
+;  ]
+;end
+;
+;;----------------------------------------------------------------------------------------------
+;; GENOTYPE FILES
+;;----------------------------------------------------------------------------------------------
+;
+;to-report generate-genotype-id
+;  report ( word "g" [meta-id] of one-of anima1s  )
+;end
+;
+;to-report genotype-file-exists?
+;  report file-exists? ( word path-to-experiment "/" genotype ".txt" )
+;end
+;
+;to import-genotype [ path ]
+;  clear-output
+;  output-print " ---------------------------------------------------------------------------"
+;  output-print (word " IMPORT GENOTYPE : " ( remove ".txt" remove ( word path-to-experiment "/") path ) )
+;  output-print " ---------------------------------------------------------------------------"
+;  
+;  ifelse genotype-file-exists? [  
+;    
+;    ask anima1s [
+;      
+;      set chromosome.I []
+;      set chromosome.II []
+;      
+;      file-open path
+;      let first-chromosome? true 
+;      while [ not file-at-end? ] [
+;        let row (csv:from-row file-read-line " ")
+;        (ifelse 
+;          ( row = [""] ) 
+;          [ set first-chromosome? false ]
+;          ( first-chromosome? ) 
+;          [ set chromosome.I lput row chromosome.I ]
+;          [ set chromosome.II lput row chromosome.II ])
+;      ]
+;      file-close
+;    ]
+;    
+;    set documentation-notes (word "Genotype " ( remove ".txt" remove ( word path-to-experiment "/") path ) " imported. " documentation-notes )
+;    update-metafile "genotype" remove ( word path-to-experiment "/") path 
+;    output-print " Genotype import successful."
+;    
+;  ] [ set genotype "" ]
+;  
+;end
+;
+;to save-genotype [ path ]
+;  clear-output
+;  output-print " ---------------------------------------------------------------------------"
+;  output-print (word " SAVE GENOTYPE : organism " meta-id )
+;  output-print " ---------------------------------------------------------------------------"
+;  (csv:to-file path (sentence chromosome.I [[]] chromosome.II ) " ")
+;  set documentation-notes (word "New genotype " (remove ".txt" remove ( word path-to-experiment "/") path ) " saved. " documentation-notes )
+;  update-metafile "genotype" simulation-id 
+;  output-print " Genotype successfully saved."
+;end
