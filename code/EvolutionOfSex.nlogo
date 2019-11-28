@@ -1,6 +1,6 @@
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-;:::::: Variable & Breed Declarations ::::::::::::::::::::::::::::::::::::::::::
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;------------------------------------------------------------------------------------
+;:::::: Evolution of Sex ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;------------------------------------------------------------------------------------
 
 globals [
   allele-color-types
@@ -14,32 +14,30 @@ breed [ parasites parasite ]
 hosts-own [ allele11 allele12 allele21 allele22 sex infecting-parasite gestation ]
 parasites-own [ age host-host ]
 
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-;:::::: Setup ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;------------------------------------------------------------------------------------
+;:::::: Setup :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;------------------------------------------------------------------------------------
 
 to setup
   clear-all
-  ask patches [ set pcolor green ]
-  setup-vars
+  ask patches [ set pcolor white ]
+  setup-parameters
   setup-parasites
   setup-hosts
   reset-ticks
 end
 
-to setup-vars
-  set allele-size-types [ 1 3 ]
-  set allele-color-types [ orange blue ]
+to setup-parameters
+  set allele-size-types [ 1 2 3 ] ; n-of size-allele-count
+  set allele-color-types [ orange blue green red ] ;n-of color-allele-count yellow turquoise magenta lime violet pink cyan
   setup-parasite-size-types
   set group-radius 20
 end
 
 to setup-parasite-size-types
   set parasite-size-types []
-  foreach allele-size-types [ ?1 ->
-    let i ?1
-    foreach allele-size-types [ ??1 ->
-      let j ??1
+  foreach allele-size-types [ i ->
+    foreach allele-size-types [ j ->
       set parasite-size-types lput ( ( i + j ) / 2 ) parasite-size-types
     ]
   ]
@@ -47,10 +45,7 @@ to setup-parasite-size-types
 end
 
 to setup-parasites
-  create-parasites carrying-capacity
-  [
-    initialize-parasite
-  ]
+  create-parasites host-population-density * count patches [ initialize-parasite ]
 end
 
 to initialize-parasite
@@ -66,7 +61,7 @@ to initialize-parasite
 end
 
 to setup-hosts
-  create-hosts carrying-capacity
+  create-hosts host-population-density * count patches
   [
     set hidden? false
     set label ""
@@ -121,18 +116,33 @@ to-report get-host-shape
   if sex = "female" [ report "heart" ]
 end
 
-
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-;:::::: Runtime Procedures :::::::::::::::::::::::::::::::::::::::::::::::::::::
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;------------------------------------------------------------------------------------
+;:::::: Go ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;------------------------------------------------------------------------------------
 
 to go
+
+  ; visuals
   update-visibility-settings
-  ask parasites [ parasite-wander ]
-  ask parasites [ parasite-update-age ]
+
+  ; stops if no parasites or mixed host population
+  if ( count parasites = 0 or
+    ( sexual-to-asexual-ratio > 0
+      and sexual-to-asexual-ratio < 1
+      and (( count hosts with [ sex = "asexual" ] = count hosts )
+        or ( count hosts with [ sex != "asexual" ] = count hosts ))))
+  [ stop ]
+
+  ; hosts
   ask hosts [ hosts-wander ]
   ask hosts [ host-update-gestation ]
   maintain-host-carrying-capacity
+
+  ; parasites
+  ask parasites [ parasite-wander ]
+  ask parasites [ parasite-update-age ]
+  maintain-parasite-carrying-capacity
+
   tick
 end
 
@@ -141,56 +151,23 @@ to update-visibility-settings
   ask parasites [ set hidden? (not show-parasites) ]
 end
 
-to parasite-update-age
-  set age age + 1
-  if age > parasite-lifespan [
-    if host-host != nobody [ parasites-reproduce ]
-    die
-  ]
-end
-
-to host-update-gestation
-  set gestation gestation + 1
-  if gestation > interbirth-interval [
-    reproduce
-    set gestation 0
-  ]
-end
-
 to maintain-host-carrying-capacity
-  repeat (count hosts - carrying-capacity) [ ask one-of hosts [ remove-host ] ]
+  repeat (count hosts - host-population-density * count patches ) [ ask one-of hosts [ remove-host ] ]
 end
 
-to execute-reproduce
-  let old-host-group hosts
-  ask old-host-group [
-    reproduce
-  ]
+to maintain-parasite-carrying-capacity
+  repeat ( count parasites - parasite-population-density * count patches ) [ ask one-of parasites [ die ] ]
 end
 
-to reproduce
-  if [infecting-parasite] of self = nobody [
-    if [sex] of self = "asexual" [ ask self [ hosts-reproduce-asexually ]]
-    if [sex] of self = "female" [ ask self [ hosts-reproduce-sexually ]]
-  ]
-end
-
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-;:::::: Agent Procedures :::::::::::::::::::::::::::::::::::::::::::::::::::::::
-;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;------------------------------------------------------------------------------------
+;:::::: Hosts :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;------------------------------------------------------------------------------------
 
 to hosts-wander
   right random 90
   left random 90
   fd .3
   if infecting-parasite != nobody [ ask infecting-parasite [ move-to [patch-here] of myself ] ]
-end
-
-to parasite-wander
-  right random 90
-  left random 90
-  fd 1
-  attempt-infection
 end
 
 to attempt-infection
@@ -205,18 +182,11 @@ to attempt-infection
   ]
 end
 
-to parasites-reproduce
-  hatch-parasites offspring-per-parasite
-  [
-    set age 0
-    set host-host nobody
-    if random-float 1.0 < parasite-mutation-rate [
-      initialize-parasite
-      set xcor [xcor] of self
-      set ycor [ycor] of self
-    ]
+to reproduce
+  if [infecting-parasite] of self = nobody [
+    if [sex] of self = "asexual" [ ask self [ hosts-reproduce-asexually ]]
+    if [sex] of self = "female" [ ask self [ hosts-reproduce-sexually ]]
   ]
-  ask host-host [ remove-host ]
 end
 
 to hosts-reproduce-asexually
@@ -228,7 +198,7 @@ to hosts-reproduce-asexually
 end
 
 to hosts-reproduce-sexually
-  let eligible-males hosts in-radius group-radius with [ sex = "male" ]
+  let eligible-males hosts with [ sex = "male" ] ; in-radius group-radius
 
   if any? eligible-males [
     let mate one-of eligible-males
@@ -272,14 +242,67 @@ to hosts-update-for-mutation
     set allele21 initialize-size-allele ]
   if random-float 1.0 < host-mutation-rate [
     set allele22 initialize-size-allele ]
-  if random-float 1.0 < host-mutation-rate [
-    set sex initialize-sex ]
+;  if random-float 1.0 < host-mutation-rate [
+;    set sex initialize-sex ]
 end
 
 to remove-host
   if infecting-parasite != nobody [ ask infecting-parasite [ die ] ]
   die
 end
+
+;------------------------------------------------------------------------------------
+;:::::: Parasites :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;------------------------------------------------------------------------------------
+
+to parasite-wander
+  right random 90
+  left random 90
+  fd 1
+  attempt-infection
+end
+
+to parasites-reproduce
+  hatch-parasites offspring-per-parasite
+  [
+    set age 0
+    set host-host nobody
+    if random-float 1.0 < parasite-mutation-rate [
+      initialize-parasite
+      set xcor [xcor] of self
+      set ycor [ycor] of self
+    ]
+  ]
+  ask host-host [ remove-host ]
+end
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+to parasite-update-age
+  set age age + 1
+  if age > parasite-lifespan [
+    if host-host != nobody [ parasites-reproduce ]
+    die
+  ]
+end
+
+to host-update-gestation
+  set gestation gestation + 1
+  if gestation > interbirth-interval [
+    reproduce
+    set gestation 0
+  ]
+end
+
+
+
+
+
+
+
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 236
@@ -309,9 +332,9 @@ ticks
 30.0
 
 BUTTON
-472
+393
 10
-550
+471
 43
 NIL
 go
@@ -326,9 +349,9 @@ NIL
 1
 
 BUTTON
-388
+309
 10
-465
+386
 43
 NIL
 setup
@@ -344,19 +367,19 @@ NIL
 
 TEXTBOX
 18
-291
+272
 244
-309
+290
 ------------ Parasites -------------
 11
 0.0
 1
 
 SLIDER
-15
-249
-226
-282
+16
+220
+227
+253
 host-mutation-rate
 host-mutation-rate
 0
@@ -369,9 +392,9 @@ HORIZONTAL
 
 SLIDER
 16
-130
+183
 227
-163
+216
 sexual-to-asexual-ratio
 sexual-to-asexual-ratio
 0
@@ -383,15 +406,15 @@ NIL
 HORIZONTAL
 
 SLIDER
-15
-210
-227
-243
+478
+571
+690
+604
 offspring-per-female
 offspring-per-female
 0
 10
-3.0
+1.0
 1
 1
 NIL
@@ -444,36 +467,25 @@ PENS
 "orange-large" 1.0 0 -6995700 true "" "plot (count hosts with [ (color = orange ) and ( size = 3 ) and (sex = \"asexual\")])"
 
 SLIDER
-15
-170
-227
-203
+478
+531
+690
+564
 interbirth-interval
 interbirth-interval
 0
 1000
-500.0
+208.0
 1
 1
 ticks
 HORIZONTAL
 
-INPUTBOX
-16
-64
-226
-124
-carrying-capacity
-1000.0
-1
-0
-Number
-
 SLIDER
-13
-430
-227
-463
+709
+569
+923
+602
 parasite-lifespan
 parasite-lifespan
 0
@@ -486,29 +498,29 @@ HORIZONTAL
 
 SLIDER
 14
-392
+376
 226
-425
+409
 parasite-infectivity
 parasite-infectivity
 0
 1.0
-0.5
+1.0
 .01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-14
-310
-227
-343
+709
+530
+922
+563
 offspring-per-parasite
 offspring-per-parasite
 1
 200
-10.0
+30.0
 1
 1
 NIL
@@ -516,34 +528,34 @@ HORIZONTAL
 
 SLIDER
 14
-351
+340
 227
-384
+373
 parasite-mutation-rate
 parasite-mutation-rate
 0
 1.0
-0.1
+0.15
 .01
 1
 NIL
 HORIZONTAL
 
 SWITCH
-13
-469
-226
-502
+481
+10
+630
+43
 show-parasites
 show-parasites
-0
+1
 1
 -1000
 
 PLOT
-1038
+1036
 10
-1359
+1357
 265
 Parasite Phenotype Frequencies
 time
@@ -564,10 +576,10 @@ PENS
 "orange-large" 1.0 0 -6995700 true "" "plot (count parasites with [ (color = orange - 2) and (size = 3 / 3)])"
 
 TEXTBOX
-14
-44
-232
-62
+16
+121
+234
+139
 -------------- Hosts ---------------
 11
 0.0
@@ -584,13 +596,13 @@ number of individuals
 0.0
 10.0
 0.0
-10.0
+1.0
 true
 true
 "" ""
 PENS
-"asexual" 1.0 0 -4539718 true "" "plot (count hosts with [ sex = \"asexual\" ])"
-"sexual" 1.0 0 -11053225 true "" "plot (count hosts with [ sex != \"asexual\" ])"
+"asexual" 1.0 0 -4539718 true "" "plot ((count hosts with [ sex = \"asexual\" ]) / count hosts )"
+"sexual" 1.0 0 -11053225 true "" "plot ((count hosts with [ sex != \"asexual\" ]) / count hosts )"
 
 TEXTBOX
 87
@@ -601,6 +613,66 @@ SETTINGS
 14
 0.0
 1
+
+SLIDER
+17
+37
+226
+70
+color-allele-count
+color-allele-count
+1
+10
+2.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+17
+73
+227
+106
+size-allele-count
+size-allele-count
+1
+10
+2.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+16
+145
+227
+178
+host-population-density
+host-population-density
+0
+1
+0.03
+.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+14
+303
+227
+336
+parasite-population-density
+parasite-population-density
+0
+1
+0.56
+.01
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
