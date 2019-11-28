@@ -5,14 +5,13 @@
 globals [
   allele-color-types
   allele-size-types
-  parasite-size-types
-  group-radius]
+  parasite-size-types ]
 
 breed [ hosts host ]
 breed [ parasites parasite ]
 
 hosts-own [ allele11 allele12 allele21 allele22 sex infecting-parasite gestation ]
-parasites-own [ age host-host ]
+parasites-own [ age my-host ]
 
 ;------------------------------------------------------------------------------------
 ;:::::: Setup :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -31,7 +30,6 @@ to setup-parameters
   set allele-size-types [ 1 2 3 ] ; n-of size-allele-count
   set allele-color-types [ orange blue green red ] ;n-of color-allele-count yellow turquoise magenta lime violet pink cyan
   setup-parasite-size-types
-  set group-radius 20
 end
 
 to setup-parasite-size-types
@@ -57,7 +55,7 @@ to initialize-parasite
   set ycor random-ycor
   set color ((one-of allele-color-types) - 2)
   set size (one-of parasite-size-types) / 3
-  set host-host nobody
+  set my-host nobody
 end
 
 to setup-hosts
@@ -176,9 +174,20 @@ to attempt-infection
     if matching? and infecting-parasite = nobody [
       if random-float 1.0 < parasite-infectivity [
         set infecting-parasite myself
-        ask infecting-parasite [ set host-host myself ]
+        ask infecting-parasite [ set my-host myself ]
       ]
     ]
+  ]
+end
+
+to host-update-gestation
+;  set gestation gestation + 1
+;  if gestation > interbirth-interval [
+;    reproduce
+;    set gestation 0
+;  ]
+  if ( random-float 1.0 < host-reproductive-rate ) [
+    reproduce
   ]
 end
 
@@ -198,7 +207,7 @@ to hosts-reproduce-asexually
 end
 
 to hosts-reproduce-sexually
-  let eligible-males hosts with [ sex = "male" ] ; in-radius group-radius
+  let eligible-males hosts with [ sex = "male" ]
 
   if any? eligible-males [
     let mate one-of eligible-males
@@ -242,8 +251,6 @@ to hosts-update-for-mutation
     set allele21 initialize-size-allele ]
   if random-float 1.0 < host-mutation-rate [
     set allele22 initialize-size-allele ]
-;  if random-float 1.0 < host-mutation-rate [
-;    set sex initialize-sex ]
 end
 
 to remove-host
@@ -266,14 +273,14 @@ to parasites-reproduce
   hatch-parasites offspring-per-parasite
   [
     set age 0
-    set host-host nobody
+    set my-host nobody
     if random-float 1.0 < parasite-mutation-rate [
       initialize-parasite
       set xcor [xcor] of self
       set ycor [ycor] of self
     ]
   ]
-  ask host-host [ remove-host ]
+  ask my-host [ remove-host ]
 end
 
 
@@ -283,18 +290,12 @@ end
 to parasite-update-age
   set age age + 1
   if age > parasite-lifespan [
-    if host-host != nobody [ parasites-reproduce ]
+    if my-host != nobody [ parasites-reproduce ]
     die
   ]
 end
 
-to host-update-gestation
-  set gestation gestation + 1
-  if gestation > interbirth-interval [
-    reproduce
-    set gestation 0
-  ]
-end
+
 
 
 
@@ -305,13 +306,13 @@ end
 
 @#$#@#$#@
 GRAPHICS-WINDOW
-236
-51
-705
-521
+237
+49
+704
+517
 -1
 -1
-2.305
+2.3
 1
 10
 1
@@ -366,10 +367,10 @@ NIL
 1
 
 TEXTBOX
-18
-272
-244
-290
+17
+310
+243
+328
 ------------ Parasites -------------
 11
 0.0
@@ -497,10 +498,10 @@ ticks
 HORIZONTAL
 
 SLIDER
-14
-376
-226
-409
+13
+414
+225
+447
 parasite-infectivity
 parasite-infectivity
 0
@@ -527,10 +528,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-14
-340
-227
-373
+13
+378
+226
+411
 parasite-mutation-rate
 parasite-mutation-rate
 0
@@ -660,16 +661,42 @@ NIL
 HORIZONTAL
 
 SLIDER
-14
-303
-227
-336
+13
+341
+226
+374
 parasite-population-density
 parasite-population-density
 0
 1
-0.56
+0.54
 .01
+1
+NIL
+HORIZONTAL
+
+MONITOR
+65
+526
+296
+571
+birth rate
+count hosts with [ gestation = interbirth-interval ] / count hosts
+17
+1
+11
+
+SLIDER
+16
+256
+227
+289
+host-reproductive-rate
+host-reproductive-rate
+0
+1
+0.001
+0.001
 1
 NIL
 HORIZONTAL
