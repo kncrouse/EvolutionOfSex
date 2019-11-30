@@ -4,10 +4,6 @@
 
 extensions [ csv ]
 
-__includes [
-  "data.nls"
-]
-
 globals [
   allele-color-types
   allele-size-types
@@ -33,6 +29,17 @@ to setup
 end
 
 to setup-parameters
+
+  if ( behaviorspace-experiment-name = "parameter-explorer" ) [
+    set parasite-mutation-rate random-float 1
+    set host-mutation-rate random-float 1
+    set parasite-mortality-rate random-float 1
+    set parasite-reproductive-rate random-float 1
+    set parasite-infectivity random-float 1
+    set host-reproductive-rate random-float 1
+    set host-population-density random-float 1
+    set sexual-to-asexual-ratio random-float 1 ]
+
   set allele-size-types [ 1 2 ]
   set allele-color-types [ orange blue ]
   setup-parasite-size-types
@@ -126,14 +133,6 @@ to go
 
   ; visuals
   update-visibility-settings
-
-  ; stops if no parasites or mixed host population
-  if ( count parasites = 0 or
-    ( sexual-to-asexual-ratio > 0
-      and sexual-to-asexual-ratio < 1
-      and (( count hosts with [ sex = "asexual" ] = count hosts )
-        or ( count hosts with [ sex != "asexual" ] = count hosts ))))
-  [ stop ]
 
   ; hosts
   ask hosts [ hosts-wander ]
@@ -277,15 +276,102 @@ to parasite-death
     die
   ]
 end
+
+;------------------------------------------------------------------------------------
+;:::::: Data Collection :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;------------------------------------------------------------------------------------
+
+to collect-data
+
+  ifelse ( not file-exists? "../output/output.csv" ) [
+
+    file-open "../output/output.csv"
+    csv:to-file "../output/output.csv" (list (list
+      "behaviorspace-experiment-name"
+      "behaviorspace-run-number"
+      "date-and-time"
+      "world-width"
+      "world-height"
+      "ticks"
+      "sexual-to-asexual-ratio"
+      "host-population-density"
+      "host-reproductive-rate"
+      "host-mutation-rate"
+      "parasite-mortality-rate"
+      "parasite-infectivity"
+      "parasite-reproductive-rate"
+      "parasite-mutation-rate"
+      "who-won"
+      "number-of-parasites"
+      "number-of-asexual-hosts"
+      "number-of-sexual-hosts"
+    ))
+
+    collect-data
+
+  ][
+
+    let oldfile csv:from-file "../output/output.csv"
+
+    file-open "../output/output.csv"
+    csv:to-file "../output/output.csv"
+    (lput
+      (list
+        behaviorspace-experiment-name
+        behaviorspace-run-number
+        date-and-time
+        world-width
+        world-height
+        ticks
+        sexual-to-asexual-ratio
+        host-population-density
+        host-reproductive-rate
+        host-mutation-rate
+        parasite-mortality-rate
+        parasite-infectivity
+        parasite-reproductive-rate
+        parasite-mutation-rate
+        who-won
+        number-of-parasites
+        number-of-asexual-hosts
+        number-of-sexual-hosts
+      )
+
+      oldfile )
+
+    file-close
+
+  ]
+
+end
+
+to-report who-won
+  report (ifelse-value
+    ( not any? hosts ) [ "parasites" ]
+    ( count hosts with [ sex = "asexual" ] >= count hosts with [ sex = "male" or sex = "female" ] ) [ "asexual" ]
+    [ "sexual" ])
+end
+
+to-report number-of-parasites
+  report count parasites
+end
+
+to-report number-of-asexual-hosts
+  report count hosts with [ sex = "asexual" ]
+end
+
+to-report number-of-sexual-hosts
+  report count hosts with [ sex = "male" or sex = "female" ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 229
 10
-740
-522
+741
+523
 -1
 -1
-2.515
+5.04
 1
 10
 1
@@ -296,9 +382,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-199
+99
 0
-199
+99
 1
 1
 1
@@ -358,7 +444,7 @@ host-mutation-rate
 host-mutation-rate
 0
 1.0
-0.02
+0.03
 .01
 1
 NIL
@@ -373,7 +459,7 @@ sexual-to-asexual-ratio
 sexual-to-asexual-ratio
 0
 1.0
-0.2
+0.5
 .01
 1
 NIL
@@ -434,7 +520,7 @@ parasite-infectivity
 parasite-infectivity
 0
 1.0
-0.2
+0.5
 .01
 1
 NIL
@@ -449,7 +535,7 @@ parasite-mutation-rate
 parasite-mutation-rate
 0
 1.0
-0.02
+0.1
 .01
 1
 NIL
@@ -462,12 +548,12 @@ SWITCH
 82
 show-parasites
 show-parasites
-0
+1
 1
 -1000
 
 PLOT
-1073
+1075
 10
 1394
 265
@@ -527,7 +613,7 @@ host-population-density
 host-population-density
 0
 1
-0.02
+0.03
 .01
 1
 NIL
@@ -542,7 +628,7 @@ parasite-mortality-rate
 parasite-mortality-rate
 0
 1
-0.004
+0.003
 .001
 1
 NIL
@@ -557,7 +643,7 @@ host-reproductive-rate
 host-reproductive-rate
 0
 1
-0.002
+0.003
 0.001
 1
 NIL
@@ -572,7 +658,7 @@ parasite-reproductive-rate
 parasite-reproductive-rate
 0
 1
-0.08
+0.02
 .001
 1
 NIL
@@ -1156,38 +1242,61 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="parameter-explore" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="parameter-explorer" repetitions="1000" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
-    <final>carefully [ collect-data ] [ ]</final>
-    <exitCondition>( count parasites = 0 or
-    ( sexual-to-asexual-ratio &gt; 0
-      and sexual-to-asexual-ratio &lt; 1
-      and (( count hosts with [ sex = "asexual" ] = count hosts )
-        or ( count hosts with [ sex != "asexual" ] = count hosts ))))</exitCondition>
+    <final>collect-data</final>
+    <timeLimit steps="10000"/>
+  </experiment>
+  <experiment name="experiment" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <final>carefully [ collect-data ] [ print error-message ]</final>
+    <timeLimit steps="10000"/>
+    <enumeratedValueSet variable="parasite-mutation-rate">
+      <value value="0.01"/>
+      <value value="0.05"/>
+      <value value="0.1"/>
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="host-mutation-rate">
+      <value value="0.01"/>
+      <value value="0.05"/>
+      <value value="0.1"/>
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="parasite-mortality-rate">
+      <value value="0.001"/>
+      <value value="0.005"/>
+      <value value="0.01"/>
+      <value value="0.02"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="parasite-reproductive-rate">
+      <value value="0.05"/>
+      <value value="0.1"/>
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="parasite-infectivity">
+      <value value="0.05"/>
+      <value value="0.5"/>
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="host-reproductive-rate">
+      <value value="0.001"/>
+      <value value="0.005"/>
+      <value value="0.01"/>
+      <value value="0.02"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="sexual-to-asexual-ratio">
       <value value="0.25"/>
       <value value="0.5"/>
       <value value="0.75"/>
     </enumeratedValueSet>
-    <steppedValueSet variable="host-population-density" first="0.02" step="0.02" last="0.1"/>
-    <steppedValueSet variable="host-reproductive-rate" first="0.002" step="0.002" last="0.01"/>
-    <enumeratedValueSet variable="host-mutation-rate">
+    <enumeratedValueSet variable="host-population-density">
+      <value value="0.01"/>
       <value value="0.05"/>
       <value value="0.1"/>
-      <value value="0.15"/>
-    </enumeratedValueSet>
-    <steppedValueSet variable="parasite-mortality-rate" first="0.002" step="0.002" last="0.01"/>
-    <enumeratedValueSet variable="parasite-infectivity">
-      <value value="0.25"/>
-      <value value="0.5"/>
-      <value value="0.75"/>
-    </enumeratedValueSet>
-    <steppedValueSet variable="parasite-reproductive-rate" first="0.02" step="0.02" last="0.1"/>
-    <enumeratedValueSet variable="parasite-mutation-rate">
-      <value value="0.05"/>
-      <value value="0.1"/>
-      <value value="0.15"/>
+      <value value="0.2"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
@@ -1210,9 +1319,9 @@ VIEW
 1
 1
 0
-199
+99
 0
-199
+99
 
 BUTTON
 91
