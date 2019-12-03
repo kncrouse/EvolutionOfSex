@@ -40,7 +40,7 @@ to setup-parameters
     set host-population-density random-float 1
     set sexual-to-asexual-ratio random-float 1 ]
 
-  set allele-size-types [ 1 2 ]
+  set allele-size-types [ 2 4 ]
   set allele-color-types [ orange blue ]
   setup-parasite-size-types
 end
@@ -163,7 +163,7 @@ end
 to hosts-wander
   right random 90
   left random 90
-  fd .3
+  fd .1
   if infecting-parasite != nobody [ ask infecting-parasite [ move-to [patch-here] of myself ] ]
 end
 
@@ -371,7 +371,7 @@ GRAPHICS-WINDOW
 523
 -1
 -1
-5.04
+2.52
 1
 10
 1
@@ -382,9 +382,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-99
+199
 0
-99
+199
 1
 1
 1
@@ -444,7 +444,7 @@ host-mutation-rate
 host-mutation-rate
 0
 1.0
-0.03
+0.05
 .01
 1
 NIL
@@ -520,7 +520,7 @@ parasite-infectivity
 parasite-infectivity
 0
 1.0
-0.5
+0.1
 .01
 1
 NIL
@@ -535,7 +535,7 @@ parasite-mutation-rate
 parasite-mutation-rate
 0
 1.0
-0.1
+0.05
 .01
 1
 NIL
@@ -628,7 +628,7 @@ parasite-mortality-rate
 parasite-mortality-rate
 0
 1
-0.003
+0.005
 .001
 1
 NIL
@@ -658,7 +658,7 @@ parasite-reproductive-rate
 parasite-reproductive-rate
 0
 1
-0.02
+0.1
 .001
 1
 NIL
@@ -1252,15 +1252,13 @@ NetLogo 6.1.1
     <setup>setup</setup>
     <go>go</go>
     <final>carefully [ collect-data ] [ print error-message ]</final>
-    <timeLimit steps="10000"/>
+    <timeLimit steps="1000"/>
     <enumeratedValueSet variable="parasite-mutation-rate">
-      <value value="0.01"/>
       <value value="0.05"/>
       <value value="0.1"/>
       <value value="0.15"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="host-mutation-rate">
-      <value value="0.01"/>
       <value value="0.05"/>
       <value value="0.1"/>
       <value value="0.15"/>
@@ -1269,7 +1267,6 @@ NetLogo 6.1.1
       <value value="0.001"/>
       <value value="0.005"/>
       <value value="0.01"/>
-      <value value="0.02"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="parasite-reproductive-rate">
       <value value="0.05"/>
@@ -1285,7 +1282,6 @@ NetLogo 6.1.1
       <value value="0.001"/>
       <value value="0.005"/>
       <value value="0.01"/>
-      <value value="0.02"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="sexual-to-asexual-ratio">
       <value value="0.25"/>
@@ -1293,7 +1289,6 @@ NetLogo 6.1.1
       <value value="0.75"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="host-population-density">
-      <value value="0.01"/>
       <value value="0.05"/>
       <value value="0.1"/>
       <value value="0.2"/>
@@ -1319,9 +1314,9 @@ VIEW
 1
 1
 0
-99
+199
 0
-99
+199
 
 BUTTON
 91
