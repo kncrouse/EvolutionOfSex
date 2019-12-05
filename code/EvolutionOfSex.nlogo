@@ -285,10 +285,10 @@ end
 
 to collect-data
 
-  ifelse ( not file-exists? "../output/output2.csv" ) [
+  ifelse ( not file-exists? "../output/output.csv" ) [
 
-    file-open "../output/output2.csv"
-    csv:to-file "../output/output2.csv" (list (list
+    file-open "../output/output.csv"
+    csv:to-file "../output/output.csv" (list (list
       "behaviorspace-experiment-name"
       "behaviorspace-run-number"
       "date-and-time"
@@ -314,10 +314,10 @@ to collect-data
 
   ][
 
-    let oldfile csv:from-file "../output/output2.csv"
+    let oldfile csv:from-file "../output/output.csv"
 
-    file-open "../output/output2.csv"
-    csv:to-file "../output/output2.csv"
+    file-open "../output/output.csv"
+    csv:to-file "../output/output.csv"
     (lput
       (list
         behaviorspace-experiment-name
