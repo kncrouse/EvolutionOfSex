@@ -767,7 +767,7 @@ Use the SHOW-PARASITES switch to decide whether you want to display the parasite
 
 ### Host Settings
 
-The SEXUAL-TO-ASEXUAL-RATIO slider determines the initial ratio of sexual and asexual hosts in the population. When hosts mutate, it also determines the likelihood of a different reproductive strategy appearing.
+The SEXUAL-TO-ASEXUAL-RATIO slider determines the initial ratio of sexual and asexual hosts in the population.
 
 The HOST-MAX-POP-DENISTY slider determines the maximum number of host individuals for the given world size of your simulation. This maintains a density dependent mortality rate while the simulation is running.
 
