@@ -34,13 +34,13 @@ to setup-parameters
     set parasite-mutation-rate random-float 1
     set host-mutation-rate random-float 1
     set parasite-mortality-rate random-float 1
-    set parasite-reproductive-rate random-float 1
-    set parasite-infectivity random-float 1
-    set host-reproductive-rate random-float 1
-    set host-population-density random-float 1
+    set parasite-fertility-rate random-float 1
+    set parasite-infection-chance random-float 1
+    set host-fertility-rate random-float 1
+    set host-max-pop-density random-float 1
     set sexual-to-asexual-ratio random-float 1 ]
 
-  set allele-size-types [ 2 4 ]
+  set allele-size-types [ 1 3 ]
   set allele-color-types [ orange blue ]
   setup-parasite-size-types
 end
@@ -56,7 +56,7 @@ to setup-parasite-size-types
 end
 
 to setup-parasites
-  create-parasites host-population-density * count patches [ initialize-parasite ]
+  create-parasites ( 0.1 * host-max-pop-density * count patches ) [ initialize-parasite ]
 end
 
 to initialize-parasite
@@ -71,7 +71,7 @@ to initialize-parasite
 end
 
 to setup-hosts
-  create-hosts host-population-density * count patches
+  create-hosts host-max-pop-density * count patches
   [
     set hidden? false
     set label ""
@@ -131,6 +131,8 @@ end
 
 to go
 
+  if ( ( sexual-to-asexual-ratio > 0 and sexual-to-asexual-ratio < 1 and ( not any? hosts with [ sex = "asexual" ] or not any? hosts with [ sex != "asexual" ])) or not any? parasites ) [ stop ]
+
   ; visuals
   update-visibility-settings
 
@@ -153,7 +155,7 @@ to update-visibility-settings
 end
 
 to maintain-host-carrying-capacity
-  repeat (count hosts - host-population-density * count patches ) [ ask one-of hosts [ remove-host ] ]
+  repeat (count hosts - host-max-pop-density * count patches ) [ ask one-of hosts [ remove-host ] ]
 end
 
 ;------------------------------------------------------------------------------------
@@ -171,7 +173,7 @@ to attempt-infection
   ask hosts-on patch-here [
     let matching? (color = ([color] of myself + 2)) and (size = ([size] of myself * 3))
     if matching? and infecting-parasite = nobody [
-      if random-float 1.0 < parasite-infectivity [
+      if random-float 1.0 < parasite-infection-chance [
         set infecting-parasite myself
         ask infecting-parasite [ set my-host myself ]
       ]
@@ -180,7 +182,7 @@ to attempt-infection
 end
 
 to host-reproduce
-  if ( random-float 1.0 < host-reproductive-rate ) [
+  if ( random-float 1.0 < host-fertility-rate ) [
     if [infecting-parasite] of self = nobody [
       if [sex] of self = "asexual" [ ask self [ hosts-reproduce-asexually ]]
       if [sex] of self = "female" [ ask self [ hosts-reproduce-sexually ]]
@@ -196,7 +198,7 @@ to hosts-reproduce-asexually
 end
 
 to hosts-reproduce-sexually
-  let eligible-males hosts with [ sex = "male" ]
+  let eligible-males hosts in-radius ( sexual-mating-radius * world-width ) with [ sex = "male" ]
 
   if any? eligible-males [
     let mate one-of eligible-males
@@ -258,7 +260,7 @@ to parasite-wander
 end
 
 to parasites-reproduce
-  if ( my-host != nobody and random-float 1.0 < parasite-reproductive-rate ) [
+  if ( my-host != nobody and random-float 1.0 < parasite-fertility-rate ) [
     hatch-parasites 1
     [
       if random-float 1.0 < parasite-mutation-rate [
@@ -283,10 +285,10 @@ end
 
 to collect-data
 
-  ifelse ( not file-exists? "../output/output.csv" ) [
+  ifelse ( not file-exists? "../output/output2.csv" ) [
 
-    file-open "../output/output.csv"
-    csv:to-file "../output/output.csv" (list (list
+    file-open "../output/output2.csv"
+    csv:to-file "../output/output2.csv" (list (list
       "behaviorspace-experiment-name"
       "behaviorspace-run-number"
       "date-and-time"
@@ -294,14 +296,15 @@ to collect-data
       "world-height"
       "ticks"
       "sexual-to-asexual-ratio"
-      "host-population-density"
-      "host-reproductive-rate"
+      "host-max-pop-density"
+      "host-fertility-rate"
       "host-mutation-rate"
+      "sexual-mating-radius"
       "parasite-mortality-rate"
-      "parasite-infectivity"
-      "parasite-reproductive-rate"
+      "parasite-infection-chance"
+      "parasite-fertility-rate"
       "parasite-mutation-rate"
-      "who-won"
+      "who-is-winning-right-now"
       "number-of-parasites"
       "number-of-asexual-hosts"
       "number-of-sexual-hosts"
@@ -311,10 +314,10 @@ to collect-data
 
   ][
 
-    let oldfile csv:from-file "../output/output.csv"
+    let oldfile csv:from-file "../output/output2.csv"
 
-    file-open "../output/output.csv"
-    csv:to-file "../output/output.csv"
+    file-open "../output/output2.csv"
+    csv:to-file "../output/output2.csv"
     (lput
       (list
         behaviorspace-experiment-name
@@ -324,14 +327,15 @@ to collect-data
         world-height
         ticks
         sexual-to-asexual-ratio
-        host-population-density
-        host-reproductive-rate
+        host-max-pop-density
+        host-fertility-rate
         host-mutation-rate
+        sexual-mating-radius
         parasite-mortality-rate
-        parasite-infectivity
-        parasite-reproductive-rate
+        parasite-infection-chance
+        parasite-fertility-rate
         parasite-mutation-rate
-        who-won
+        who-is-winning-right-now
         number-of-parasites
         number-of-asexual-hosts
         number-of-sexual-hosts
@@ -345,7 +349,7 @@ to collect-data
 
 end
 
-to-report who-won
+to-report who-is-winning-right-now
   report (ifelse-value
     ( not any? hosts ) [ "parasites" ]
     ( count hosts with [ sex = "asexual" ] >= count hosts with [ sex = "male" or sex = "female" ] ) [ "asexual" ]
@@ -367,11 +371,11 @@ end
 GRAPHICS-WINDOW
 229
 10
-741
-523
+742
+524
 -1
 -1
-2.52
+1.6833333333333333
 1
 10
 1
@@ -382,9 +386,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-199
+299
 0
-199
+299
 1
 1
 1
@@ -426,10 +430,10 @@ NIL
 1
 
 TEXTBOX
-12
-280
-238
-298
+13
+310
+239
+328
 ------------ Parasites -------------
 11
 0.0
@@ -512,25 +516,25 @@ PENS
 "orange-large" 1.0 0 -6995700 true "" "plot (count hosts with [ (color = orange ) and ( size = 3 ) and (sex = \"asexual\")])"
 
 SLIDER
-8
-347
-220
-380
-parasite-infectivity
-parasite-infectivity
+9
+377
+222
+410
+parasite-infection-chance
+parasite-infection-chance
 0
 1.0
-0.1
+0.2
 .01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-7
-419
-220
-452
+8
+449
+221
+482
 parasite-mutation-rate
 parasite-mutation-rate
 0
@@ -601,16 +605,16 @@ true
 true
 "" ""
 PENS
-"asexual" 1.0 0 -4539718 true "" "plot ((count hosts with [ sex = \"asexual\" ]) / count hosts )"
-"sexual" 1.0 0 -11053225 true "" "plot ((count hosts with [ sex != \"asexual\" ]) / count hosts )"
+"asexual" 1.0 0 -4539718 true "" "if (any? hosts) [ plot ((count hosts with [ sex = \"asexual\" ]) / count hosts ) ]"
+"sexual" 1.0 0 -11053225 true "" "if (any? hosts) [ plot ((count hosts with [ sex != \"asexual\" ]) / count hosts ) ]"
 
 SLIDER
 9
 155
 220
 188
-host-population-density
-host-population-density
+host-max-pop-density
+host-max-pop-density
 0
 1
 0.03
@@ -620,10 +624,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-8
-311
-221
-344
+9
+341
+222
+374
 parasite-mortality-rate
 parasite-mortality-rate
 0
@@ -639,8 +643,8 @@ SLIDER
 191
 220
 224
-host-reproductive-rate
-host-reproductive-rate
+host-fertility-rate
+host-fertility-rate
 0
 1
 0.003
@@ -650,19 +654,78 @@ NIL
 HORIZONTAL
 
 SLIDER
-8
-383
-220
-416
-parasite-reproductive-rate
-parasite-reproductive-rate
+9
+413
+221
+446
+parasite-fertility-rate
+parasite-fertility-rate
 0
 1
-0.1
+0.15
 .001
 1
 NIL
 HORIZONTAL
+
+MONITOR
+976
+395
+1048
+440
+# asexual
+count hosts with [ sex = \"asexual\" ]
+17
+1
+11
+
+MONITOR
+1304
+395
+1369
+440
+# sexual
+count hosts with [ sex = \"male\" or sex = \"female\" ]
+17
+1
+11
+
+MONITOR
+1297
+132
+1378
+177
+# parasites
+count parasites
+17
+1
+11
+
+SLIDER
+10
+264
+221
+297
+sexual-mating-radius
+sexual-mating-radius
+0
+100
+15.0
+1
+1
+%
+HORIZONTAL
+
+MONITOR
+628
+20
+727
+65
+sexual : asexual
+ifelse-value ( any? hosts ) [ precision ( count hosts with [ sex = \"male\" or sex = \"female\" ] / ( count hosts with [ sex = \"asexual\" ] + 1 ) ) 3 ] [ 0 ]
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -695,34 +758,36 @@ The phenotype is determined by the host's genotype. There are two alleles for co
 
 All together, this creates six phenotypes for host: blue-small, blue-medium, blue-large, orange-small, orange-medium, and orange-large. The parasites, in turn, are assigned one of these six types as their infection strategy. Upon initialization, the parasites are given a random type. However, when they reproduce, which they do asexally, all of their offspring possess the same infection strategy as their parent.
 
-When the simulation runs, host and parasites wander randomly about their environment. Host females that are in close enough proximity to a male host will reproduce sexually at each INTERBIRTH-INTERVAL. Parasites that come into contact with a host that corresponds to their own phenotype will have some probability, according to the PARASITE-INFECTIVITY setting, of infecting that host. Infected hosts then become incubation containers for the parasite's offspring. When a parasite reaches its PARASITE-LIFESPAN, it and its host die and its offspring are released into the environment.
+When the simulation runs, host and parasites wander randomly about their environment. Host females that are in close enough proximity to a male host can reproduce sexually. Parasites that come into contact with a host that corresponds to their own phenotype have some probability of infecting that host. Infected hosts then become incubation containers for the parasite's offspring and its offspring are released into the environment. When a parasite dies, it also kills its host.
 
 
 ## HOW TO USE IT
 
-### Host Settings
+Use the SHOW-PARASITES switch to decide whether you want to display the parasites in the environment or not. With this switch turned off, it may be easier to see the behavior of the host individuals. However, the parasites are still present and infecting the hosts, even if they aren't visible.
 
-Write in the CARRYING-CAPACITY input box to determine the maximum number of host individuals for your simulation. This maintains a density dependent mortality rate while the simulation is running.
+### Host Settings
 
 The SEXUAL-TO-ASEXUAL-RATIO slider determines the initial ratio of sexual and asexual hosts in the population. When hosts mutate, it also determines the likelihood of a different reproductive strategy appearing.
 
-The INTERBIRTH-INTERVAL slider determines how often a female reproduces.
+The HOST-MAX-POP-DENISTY slider determines the maximum number of host individuals for the given world size of your simulation. This maintains a density dependent mortality rate while the simulation is running.
 
-The OFFSPRING-PER-FEMALE slider determines how many offspring each female has when she reproduces. All asexual hosts are females.
+The HOST-FERILITY-RATE slider determines how often a female reproduces. All asexual hosts are females but only about half of sexual hosts are females. During reproduction, sexually reproducing female hosts combines half of her genes with the genes of a nearby male.
 
-The HOST-MUTATION-RATE slider determines the rate at which each host allele mutates. The higher the mutation rate, the more likely that one or more of the parent alleles won't be correctly copied in the offspring alleles. It also determines the rate at which an offspring will assume a different reproductive strategy than its parent.
+The HOST-MUTATION-RATE slider determines the rate at which each host allele mutates. The higher the mutation rate, the more likely that one or more of the parent alleles won't be correctly copied in the offspring alleles.
+
+The SEXUAL-MATING-RADIUS slider determines up to what distance apart a male and female host can exchange genetic material during reproduction, represented as a percent of the total world size.
+
 
 ### Parasite Settings
 
-The OFFSPRING-PER-PARASITE slider determines how many offspring each parasite has when it reproduces. Parasites only reproduce at the end of their lifespan and if they have infected a host.
+The PARASITE-MORTALITY-RATE slider determines the rate at which parasites die in a population. If a parasite hasn't found a host in that timespan, they simply die and never reproduce. However, if they have found a host, they may reproduce before they die and when they die they kill their host!
 
-The PARASITE-MUTATION-RATE slider determines the rate at which each parasite mutates its infection strategy. Again, there are six strategy options: blue-small, blue-medium, blue-large, orange-small, orange-medium, and orange-large.
+The PARASITE-INFECTION-CHANCE slider determines how easily a parasite is able to infect a host once it comes into contact with a host whose phenotype matches its own infection strategy.
 
-The PARASITE-INFECTIVITY slider determines how easily a parasite is able to infect a host once it comes into contact with a host whose phenotype matches its own infection strategy.
+The PARASITE-FERTILITY-RATE slider determines the rate at which each parasite reproduces a copy of themselves with some chance of mutation. Parasites only reproduce if they have infected a host.
 
-The PARASITE-LIFESPAN slider determines how long a parasite lives. If a parasite hasn't found a host in that time span, they simply die. However, if they have found a host, they reproduce before they die.
+The PARASITE-MUTATION-RATE slider determines the rate at which a parasite's offspring inherits a mutated infection strategy. Again, there are six strategy options: blue-small, blue-medium, blue-large, orange-small, orange-medium, and orange-large.
 
-Use the SHOW-PARASITES switch to decide whether you want to display the parasites in the environment or not. With this switch turned off, it may be easier to see the behavior of the host individuals. However, the parasites are still present and infecting the hosts, even if they aren't visible.
 
 ### Buttons
 
@@ -734,7 +799,7 @@ Press GO to make the simulation run continuously. Hosts and parasites will move 
 
 While it is running, the simulation will show the results of this parasite-host interaction in four graphs:
 
-The ASEXUAL VS. SEXUAL STRATEGIES graph shows the population count of both asexual and sexual hosts through time.
+The ASEXUAL VS. SEXUAL STRATEGIES graph shows the percentage of asexual and sexual hosts through time.
 
 The PARASITE PHENOTYPE FREQUENCIES graph shows the prevalence of each of the six infection strategies through time.
 
@@ -744,15 +809,19 @@ THE SEXUAL PHENOTYPE FREQUENCIES graph shows the prevalence of each of the six p
 
 ## THINGS TO NOTICE
 
-The purpose of this model is to demonstrate that under certain conditions sexual reproduction can be more beneficial than asexual reproduction. Pay attention to how the settings affect how often sexual reproducers are able to outcompete asexual reproducers:
+The purpose of this model is to demonstrate that under certain conditions, sexual reproduction can be more beneficial than asexual reproduction. Pay attention to how the settings affect how often sexual reproducers are able to outcompete asexual reproducers:
 
-1. Does it matter what the CARRYING-CAPACITY is set to?
-2. How do the host reproductive settings OFFSPRING-PER-FEMALE and INTERBIRTH-INTERVAL affect the ability of the host population to survive a parasite infection?
+1. Does it matter how many sexual reproducers start in the original host population?
+2. How do the HOST-POPULATION-DENSITY and HOST-REPRODUCTIVE-RATE settings affect the ability of the host population to survive a parasite infection?
 3. How do the HOST-MUTATION-RATE and PARASITE-MUTATION-RATE settings affect which reproductive strategy wins or whether the hosts survive a parasite infection? What happens if you set a mutation rate to zero?
-4. Which combination of OFFSPRING-PER-PARASITE, PARASITE-INFECTIVITY, and PARASITE-LIFESPAN settings makes the parasites most effective in infecting the host population? Which combination makes the parasites least effective? How do these settings affect which reproductive strategy wins?
+4. Which combination of PARASITE-MORTALITY-RATE, PARASITE-INFECTIVITY, and PARASITE-REPRODUCTIVE-RATE settings makes the parasites most effective in infecting the host population? Which combination makes the parasites least effective? How do these settings affect which reproductive strategy wins?
 5. When you set the initial host population to 100% sexual or 100% asexual, which strategy is better able to fight off the parasites? Which strategy more often goes to extinction?
 
 Finally, make sure to pay special attention to the graphical outputs. How do the host phenotype frequencies and parasite infection strategies affect each other? What patterns do you notice?
+
+## HOW TO CITE
+
+Crouse, Kristin (2019). “Evolution of Sex” (Version 1.1.0). CoMSES Computational Model Library. Retrieved from: https://www.comses.net/codebases/5051/releases/1.1.0/
 
 ## ACKNOWLEDGEMENTS
 
@@ -1242,56 +1311,48 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="parameter-explorer" repetitions="1000" runMetricsEveryStep="true">
-    <setup>setup</setup>
-    <go>go</go>
-    <final>collect-data</final>
-    <timeLimit steps="10000"/>
-  </experiment>
   <experiment name="experiment" repetitions="1" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <final>carefully [ collect-data ] [ print error-message ]</final>
-    <timeLimit steps="1000"/>
-    <enumeratedValueSet variable="parasite-mutation-rate">
+    <enumeratedValueSet variable="sexual-to-asexual-ratio">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="host-max-pop-density">
+      <value value="0.01"/>
       <value value="0.05"/>
       <value value="0.1"/>
-      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="host-fertility-rate">
+      <value value="0.001"/>
+      <value value="0.005"/>
+      <value value="0.01"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="host-mutation-rate">
       <value value="0.05"/>
-      <value value="0.1"/>
-      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sexual-mating-radius">
+      <value value="15"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="parasite-mortality-rate">
       <value value="0.001"/>
       <value value="0.005"/>
       <value value="0.01"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="parasite-reproductive-rate">
-      <value value="0.05"/>
+    <enumeratedValueSet variable="parasite-infection-chance">
       <value value="0.1"/>
       <value value="0.2"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="parasite-infectivity">
-      <value value="0.05"/>
+      <value value="0.3"/>
+      <value value="0.4"/>
       <value value="0.5"/>
-      <value value="1"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="host-reproductive-rate">
-      <value value="0.001"/>
-      <value value="0.005"/>
-      <value value="0.01"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="sexual-to-asexual-ratio">
-      <value value="0.25"/>
-      <value value="0.5"/>
-      <value value="0.75"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="host-population-density">
+    <enumeratedValueSet variable="parasite-fertility-rate">
       <value value="0.05"/>
       <value value="0.1"/>
-      <value value="0.2"/>
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="parasite-mutation-rate">
+      <value value="0.05"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
@@ -1314,9 +1375,9 @@ VIEW
 1
 1
 0
-199
+299
 0
-199
+299
 
 BUTTON
 91
