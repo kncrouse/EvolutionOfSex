@@ -2,18 +2,27 @@
 ;:::::: Evolution of Sex ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ;------------------------------------------------------------------------------------
 
-extensions [ csv ]
+extensions [ csv ] ; use BehaviorSapce to run multiple simulations and output the results
 
 globals [
-  allele-color-types
-  allele-size-types
-  parasite-size-types ]
+  allele-color-types ; possible host color alleles : orange or blue
+  allele-size-types ; possible host size alleles : small or large
+  parasite-size-types ] ; possible parasite size types, generated during setup
 
-breed [ hosts host ]
-breed [ parasites parasite ]
+breed [ hosts host ] ; diploid host organisms are either sexual or asexual reproducers
+breed [ parasites parasite ] ; hapoid parasites target a host that matches its phenotype
 
-hosts-own [ allele11 allele12 allele21 allele22 sex infecting-parasite ]
-parasites-own [ my-host ]
+hosts-own [
+  allele-color-1 ; first allele to code for color on the diploid host organism
+  allele-color-2 ; second allele to code for color on the diploid host organism
+  allele-size-1 ; first allele to code for size on the diploid host organism
+  allele-size-2 ; second allele to code for size on the diploid host organism
+  sex ; sexual hosts are "male" or "female" and asexual hosts are "asexual"
+  infecting-parasite ] ; parasite currently infecting host, or "nobody"
+
+parasites-own [
+  my-host ; host that the parasite is clinging to, or "nobody"
+]
 
 ;------------------------------------------------------------------------------------
 ;:::::: Setup :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -79,10 +88,10 @@ to setup-hosts
     set xcor random-xcor
     set ycor random-ycor
     set sex initialize-sex
-    set allele11 initialize-color-allele
-    set allele12 initialize-color-allele
-    set allele21 initialize-size-allele
-    set allele22 initialize-size-allele
+    set allele-color-1 initialize-color-allele
+    set allele-color-2 initialize-color-allele
+    set allele-size-1 initialize-size-allele
+    set allele-size-2 initialize-size-allele
     set-size-shape-color
   ]
 end
@@ -106,17 +115,17 @@ to-report initialize-size-allele
 end
 
 to set-size-shape-color
-  set size (allele21 + allele22) / 2
+  set size (allele-size-1 + allele-size-2) / 2
   set shape get-host-shape
 
-  if (position allele11 allele-color-types) < (position allele12 allele-color-types) [
-    set color allele12 ]
+  if (position allele-color-1 allele-color-types) < (position allele-color-2 allele-color-types) [
+    set color allele-color-2 ]
 
-  if (position allele11 allele-color-types) > (position allele12 allele-color-types) [
-    set color allele11 ]
+  if (position allele-color-1 allele-color-types) > (position allele-color-2 allele-color-types) [
+    set color allele-color-1 ]
 
-  if (position allele11 allele-color-types) = (position allele12 allele-color-types) [
-    set color allele11 ]
+  if (position allele-color-1 allele-color-types) = (position allele-color-2 allele-color-types) [
+    set color allele-color-1 ]
 end
 
 to-report get-host-shape
@@ -206,24 +215,24 @@ to hosts-reproduce-sexually
     hatch-hosts 1 [
 
       let a11List []
-      set a11List lput allele11 a11List
-      set a11List lput ([allele11] of mate) a11List
-      set allele11 one-of a11List
+      set a11List lput allele-color-1 a11List
+      set a11List lput ([allele-color-1] of mate) a11List
+      set allele-color-1 one-of a11List
 
       let a12List []
-      set a12List lput allele12 a12List
-      set a12List lput ([allele12] of mate) a12List
-      set allele12 one-of a12List
+      set a12List lput allele-color-2 a12List
+      set a12List lput ([allele-color-2] of mate) a12List
+      set allele-color-2 one-of a12List
 
       let a21List []
-      set a21List lput allele21 a21List
-      set a21List lput ([allele21] of mate) a21List
-      set allele21 one-of a21List
+      set a21List lput allele-size-1 a21List
+      set a21List lput ([allele-size-1] of mate) a21List
+      set allele-size-1 one-of a21List
 
       let a22List []
-      set a22List lput allele22 a22List
-      set a22List lput ([allele22] of mate) a22List
-      set allele22 one-of a22List
+      set a22List lput allele-size-2 a22List
+      set a22List lput ([allele-size-2] of mate) a22List
+      set allele-size-2 one-of a22List
 
       set sex coin-flip-sex
       hosts-update-for-mutation
@@ -234,13 +243,13 @@ end
 
 to hosts-update-for-mutation
   if random-float 1.0 < host-mutation-rate [
-    set allele11 initialize-color-allele ]
+    set allele-color-1 initialize-color-allele ]
   if random-float 1.0 < host-mutation-rate [
-    set allele12 initialize-color-allele ]
+    set allele-color-2 initialize-color-allele ]
   if random-float 1.0 < host-mutation-rate [
-    set allele21 initialize-size-allele ]
+    set allele-size-1 initialize-size-allele ]
   if random-float 1.0 < host-mutation-rate [
-    set allele22 initialize-size-allele ]
+    set allele-size-2 initialize-size-allele ]
 end
 
 to remove-host
@@ -472,9 +481,9 @@ HORIZONTAL
 PLOT
 1075
 273
-1396
+1401
 521
-Sexual Phenotype Frequencies
+Sexual Phenotypes
 time
 number of individuals
 0.0
@@ -497,7 +506,7 @@ PLOT
 273
 1069
 521
-Asexual Phenotype Frequencies
+Asexual Phenotypes
 time
 number of individuals
 0.0
@@ -559,9 +568,9 @@ show-parasites
 PLOT
 1075
 10
-1394
+1401
 265
-Parasite Phenotype Frequencies
+Parasite Phenotypes
 time
 number of individuals
 0.0
