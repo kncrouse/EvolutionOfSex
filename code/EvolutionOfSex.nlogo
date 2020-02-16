@@ -737,6 +737,10 @@ ifelse-value ( any? hosts ) [ precision ( count hosts with [ sex = \"male\" or s
 11
 
 @#$#@#$#@
+# Evolution of Sex 1.1.1
+
+Compatible with NetLogo 6.1.1
+
 ## WHAT IS IT?
 
 Evolution of Sex is a NetLogo model that illustrates the advantages and disadvantages of sexual and asexual reproductive strategies. It seeks to demonstrate the answer to the question:
@@ -830,7 +834,7 @@ Finally, make sure to pay special attention to the graphical outputs. How do the
 
 ## HOW TO CITE
 
-Crouse, Kristin (2019). “Evolution of Sex” (Version 1.1.0). CoMSES Computational Model Library. Retrieved from: https://www.comses.net/codebases/5051/releases/1.1.0/
+Crouse, Kristin (2020). “Evolution of Sex” (Version 1.1.1). CoMSES Computational Model Library. Retrieved from: https://www.comses.net/codebases/5051/releases/1.1.1/
 
 ## ACKNOWLEDGEMENTS
 
@@ -838,7 +842,7 @@ Thank you to M L Wilson for the conceptual idea of this model.
 
 ## COPYRIGHT AND LICENSE
 
-© 2019 K N Crouse.
+Copywrite © 2020 K N Crouse
 
 The model may be freely used, modified and redistributed provided this copyright is included and the resulting models are not used for profit.
 
