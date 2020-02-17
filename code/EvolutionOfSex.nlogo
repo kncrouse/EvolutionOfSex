@@ -294,10 +294,10 @@ end
 
 to collect-data
 
-  ifelse ( not file-exists? "../output/output.csv" ) [
+  ifelse ( not file-exists? "../results/output.csv" ) [
 
-    file-open "../output/output.csv"
-    csv:to-file "../output/output.csv" (list (list
+    file-open "../results/output.csv"
+    csv:to-file "../results/output.csv" (list (list
       "behaviorspace-experiment-name"
       "behaviorspace-run-number"
       "date-and-time"
@@ -323,10 +323,10 @@ to collect-data
 
   ][
 
-    let oldfile csv:from-file "../output/output.csv"
+    let oldfile csv:from-file "../results/output.csv"
 
-    file-open "../output/output.csv"
-    csv:to-file "../output/output.csv"
+    file-open "../results/output.csv"
+    csv:to-file "../results/output.csv"
     (lput
       (list
         behaviorspace-experiment-name
@@ -656,7 +656,7 @@ host-fertility-rate
 host-fertility-rate
 0
 1
-0.003
+0.005
 0.001
 1
 NIL
@@ -1328,6 +1328,7 @@ NetLogo 6.1.1
     <setup>setup</setup>
     <go>go</go>
     <final>carefully [ collect-data ] [ print error-message ]</final>
+    <timeLimit steps="10000"/>
     <enumeratedValueSet variable="sexual-to-asexual-ratio">
       <value value="0.5"/>
     </enumeratedValueSet>
