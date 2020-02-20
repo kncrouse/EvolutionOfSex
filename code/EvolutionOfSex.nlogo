@@ -842,7 +842,7 @@ Thank you to M L Wilson for the conceptual idea of this model.
 
 ## COPYRIGHT AND LICENSE
 
-Copywrite © 2020 K N Crouse
+Copyright © 2020 K N Crouse
 
 The model may be freely used, modified and redistributed provided this copyright is included and the resulting models are not used for profit.
 
